@@ -1,0 +1,26 @@
+{
+  "_note": "Allowlist d'outils MCP par phase (brief fondateur §4). Statut : PROVISOIRE pour blender (documenté par son amont), VOLONTAIREMENT VIDE pour les serveurs dont les noms d'outils doivent être figés depuis `python agent/agent_loop.py --list-tools <serveur>` lors de la validation Phase 3 — aucune entrée non validée n'est utilisée : le garde refuse tout ce qui est absent.",
+  "design": {
+    "freecad": []
+  },
+  "model": {
+    "blender": [
+      "get_scene_info",
+      "get_object_info",
+      "execute_blender_code",
+      "get_viewport_screenshot"
+    ],
+    "freecad": []
+  },
+  "simulate": {
+    "ros2": [],
+    "blender": []
+  },
+  "analyze": {
+    "rosbags": []
+  },
+  "iterate": {
+    "freecad": [],
+    "blender": []
+  }
+}

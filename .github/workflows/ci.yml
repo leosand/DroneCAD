@@ -27,6 +27,8 @@ jobs:
           python3 -m venv /tmp/urdfvenv
           /tmp/urdfvenv/bin/pip install --quiet xacro pytest
           /tmp/urdfvenv/bin/python -m pytest ws/src/humanoid_description/test/test_urdf.py -q
+      - name: Agent guard tests / tests des garde-fous agentiques
+        run: /tmp/urdfvenv/bin/python -m pytest agent/tests -q
 
   secret-scan:
     # EN: compensating control — GitHub secret scanning / push protection are unavailable
