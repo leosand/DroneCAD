@@ -29,6 +29,9 @@ jobs:
     # FR : contrôle compensatoire — le scan de secrets GitHub et la protection contre l'envoi
     #     sont indisponibles sur un repo privé sans GHAS (API 422, vérifié 2026-09-18).
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # EN: list PR commits only / FR : lister les commits de la PR uniquement
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,3 +41,4 @@ jobs:
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"  # EN: no PR write needed / FR : aucune écriture PR requise
