@@ -1,0 +1,59 @@
+# DroneCAD — .gitignore
+# EN: ignore rules / FR : règles d'exclusion
+
+# Python / EN: caches, venvs
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ROS 2 / EN: colcon outputs, rosbags, logs
+build/
+install/
+log/
+*.bag
+*.db3
+*.mcap
+rosbag2_*/
+
+# Blender / EN: autosave backups only — master .blend files ARE versioned (assets/)
+# FR : seuls les fichiers d'auto-sauvegarde sont exclus — les .blend maîtres SONT versionnés (assets/)
+*.blend1
+*.blend2
+blender_tmp/
+
+# CAD / EN: generated heavy exports ignored; parametric sources (.FCStd, scripts) versioned
+# FR : exports lourds générés ignorés ; les sources paramétriques (.FCStd, scripts) sont versionnées
+*.stl
+*.3mf
+
+# Agent artifacts / EN: structured JSON logs, run artifacts
+artifacts/
+*.tmp
+.RELEASE_NOTES.tmp.md
+
+# Local LLM weights / EN: never in git
+*.gguf
+*.safetensors
+
+# Security / EN: never commit secrets
+# FR : ne jamais committer de secrets
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+
+# Harness / EN: local backups and hook logs are machine-local
+.harness/backups/
+.harness/agents/hooks/skill-activation.log
+
+# IDE / OS
+.vscode/
+.idea/
+*.code-workspace
+Thumbs.db
+desktop.ini
