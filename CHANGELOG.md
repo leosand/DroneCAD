@@ -4,9 +4,7 @@ Toutes les modifications notables de ce projet sont documentées ici.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) · Versioning : [SemVer](https://semver.org/lang/fr/) · Horodatage ISO 8601 (fuseau local).
 Les releases sont *delivery-gated* et **full-auto** : gérées par `.harness/scripts/release-check.py` (déclaré le 2026-09-18, mode `full-auto`).
 
-## [Unreleased]
-
-### Added
+## [v0.1.0] - 2026-09-18
 
 - Scaffold initial : `README.md` bilingue EN/FR-CA, `ARCHITECTURE.md` (ADR 0001–0006), `AGENTS.md`, `REPORT.md`, brief fondateur `PROMPT_KIMI_CODE.md`.
 - `docker-compose.yml` — squelette sécurisé (services non-root, réseau `agentnet`, ports liés à `127.0.0.1`, pas de `privileged`).
