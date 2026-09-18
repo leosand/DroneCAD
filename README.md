@@ -56,7 +56,7 @@ flowchart LR
 |---|---|
 | GPU | NVIDIA RTX 4070 Ti SUPER — 16 376 MiB VRAM, driver 610.88 |
 | System | Intel Xeon W-2123 (4c/8t) · 31.7 GB RAM · Windows · Docker 29.7.2 (WSL2) |
-| Model | **`gpt-oss:20b`** — 14 GB, MXFP4, 128K ctx, tools — see [`docs/phase-0-hardware.md`](docs/phase-0-hardware.md) |
+| Model | **`gpt-oss:20b`** — 14 GB (MXFP4), 128K ctx, tools — **115.4 tok/s, 100 % GPU at ctx 8192**, served by a dedicated Ollama instance (`:11499`, ADR-0007) — see [`docs/phase-0-hardware.md`](docs/phase-0-hardware.md) |
 | Rejected | `devstral:22b` (does not exist) · `devstral-small-2:24b` (15 GB, no KV margin) · `qwen3-coder-next` (52 GB, not ~16 GB) — ADR-0002 |
 
 ### Quick start
@@ -66,6 +66,8 @@ git clone https://github.com/leosand/DroneCAD.git && cd DroneCAD
 docker compose config -q            # validate compose
 python scripts/validate_stack.py    # loopback-only ports, no privileged, no secrets, MCP registry
 ```
+
+**MCP registration note** — `.mcp.json` is the canonical registry for stdio MCP clients (Claude Code / Cursor read it as-is); the `rosbags` entry uses `${DRONECAD_HOME}` (set it to this repository's absolute path). Kimi Code does not read `.mcp.json` natively today — per-client registration is a Phase 3 item (see `REPORT.md`).
 
 ### Repository layout
 
@@ -129,7 +131,7 @@ DroneCAD/
 |---|---|
 | GPU | NVIDIA RTX 4070 Ti SUPER — 16 376 Mio de VRAM, pilote 610.88 |
 | Système | Intel Xeon W-2123 (4 cœurs/8 fils) · 31,7 Go de RAM · Windows · Docker 29.7.2 (WSL2) |
-| Modèle | **`gpt-oss:20b`** — 14 Go, MXFP4, contexte 128 K, outils — détails dans [`docs/phase-0-hardware.md`](docs/phase-0-hardware.md) |
+| Modèle | **`gpt-oss:20b`** — 14 Go (MXFP4), contexte 128 K, outils — **115,4 tok/s, 100 % GPU à ctx 8192**, servi par une instance Ollama dédiée (`:11499`, ADR-0007) — détails dans [`docs/phase-0-hardware.md`](docs/phase-0-hardware.md) |
 | Rejetés | `devstral:22b` (n'existe pas) · `devstral-small-2:24b` (15 Go, marge KV insuffisante) · `qwen3-coder-next` (52 Go, pas ~16 Go) — ADR-0002 |
 
 ### Démarrage rapide
@@ -139,6 +141,8 @@ git clone https://github.com/leosand/DroneCAD.git && cd DroneCAD
 docker compose config -q            # valider le compose
 python scripts/validate_stack.py    # ports en boucle locale, pas de privileged, pas de secrets, registre MCP
 ```
+
+**Note d'enregistrement MCP** — `.mcp.json` est le registre canonique des clients MCP en stdio (Claude Code / Cursor le lisent tel quel) ; l'entrée `rosbags` utilise `${DRONECAD_HOME}` (définir cette variable avec le chemin absolu du dépôt). Kimi Code ne lit pas `.mcp.json` nativement aujourd'hui — l'enregistrement par client est prévu en Phase 3 (voir `REPORT.md`).
 
 ### Arborescence
 
