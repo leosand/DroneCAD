@@ -14,6 +14,7 @@ FROM ros:jazzy AS base
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ros-jazzy-ros-gz \
+      ros-jazzy-gz-ros2-control \
       ros-jazzy-ros2-control \
       ros-jazzy-ros2-controllers \
       ros-jazzy-moveit \
@@ -21,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ros-jazzy-robot-state-publisher \
       ros-jazzy-joint-state-publisher \
       ros-jazzy-joint-state-publisher-gui \
+      liburdfdom-tools \
       python3-pip python3-venv git curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
