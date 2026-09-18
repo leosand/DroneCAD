@@ -26,7 +26,7 @@ Outils détectés :
 | Python / uv | 3.12.10 / 0.12.9 | ✅ |
 | gh / git | 2.96.0 (compte `leosand`) / 2.55.0 | ✅ |
 | Blender | 5.2 (hôte) | ✅ |
-| FreeCAD | absent de l'hôte | ⚠️ — le serveur MCP FreeCAD passera par l'image Docker (voir ADR-0006) |
+| FreeCAD | **1.1.3** (hôte, `%LOCALAPPDATA%\Programs\FreeCAD 1.1`, GUI ouverte) | ✅ — pont MCP hôte via le workbench `robust-mcp` (`spkane/freecad-addon-robust-mcp-server`), XML-RPC `127.0.0.1:9875` ; image Docker en repli (ADR-0006). *Correction : la première sonde ne couvrait que `Program Files` — installation user-local ratée.* |
 
 ## 2. Audit des dépôts de référence (2026-09-18)
 

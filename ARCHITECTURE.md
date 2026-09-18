@@ -89,7 +89,7 @@
 
 **Decision.** `docker-compose.yml` contains *runtime* services only (`ros2-jazzy`, `shodh-memory` REST). The stdio MCP servers are registered in `.mcp.json` and spawned by the agent client:
 - `blender` → `uvx mcp-for-blender` (host),
-- `freecad` → `docker run --rm -i ... ghcr.io/spkane/freecad-robust-mcp` (containerized stdio),
+- `freecad` → `uvx --from freecad-robust-mcp --with 'mcp<2' freecad-mcp` with `FREECAD_MODE=xmlrpc` against the **local FreeCAD 1.1 host install** (`%LOCALAPPDATA%\Programs\FreeCAD 1.1`, verified 2026-09-18), via the `robust-mcp` workbench bridge v0.6.2 (repo `spkane/freecad-addon-robust-mcp-server`, cloned into `%APPDATA%\FreeCAD\v1-1\Mod\freecad-robust-mcp`; XML-RPC on `127.0.0.1:9875`). **Note:** the PyPI client needs the `mcp<2` pin (its dependency metadata allows `mcp` 2.x, which renamed `FastMCP` — `ModuleNotFoundError` verified 2026-09-18). Containerized fallback: `docker run --rm -i --add-host=host.docker.internal:host-gateway -e FREECAD_MODE=xmlrpc ghcr.io/spkane/freecad-robust-mcp`,
 - `ros2` → `docker exec -i dronecad-ros2-jazzy …` (server lives inside the ROS container),
 - `rosbags` → vendored clone (fork candidate, Phase 3),
 - `memory` → `npx -y @shodh/memory-mcp` (stdio) + optional REST `:3030`.
@@ -115,7 +115,7 @@
 ## Current limits (2026-09-18)
 
 - Phase 1 runtime images not built yet: compose references the official `ros:jazzy` image; the multi-stage Dockerfile with Gazebo/`ros_gz`/`ros2_control`/MoveIt 2 lands in Phase 1.
-- FreeCAD is **not installed** on the host (audited); the `freecad` MCP entry relies on the Dockerized server.
+- FreeCAD **1.1.3 is installed** on the host (user-local, `%LOCALAPPDATA%\Programs\FreeCAD 1.1`; the first probe only covered `Program Files` — corrected 2026-09-18). The `freecad` MCP entry targets the **local install** via the `robust-mcp` workbench bridge (restart FreeCAD + start the RPC server to activate; round-trip validated in Phase 3). The Dockerized server remains a documented fallback.
 - Kimi Code does not appear to read `.mcp.json` natively (`kimi --help` shows no MCP flag) — per-client registration is a Phase 3 item; Claude Code/Cursor read `.mcp.json` as-is.
 - CPU-bound RTF is unmeasured; Gazebo performance targets are provisional until Phase 2.
 - `docs/`, `README` and `REPORT` are bilingual: when editing one language, update the other.

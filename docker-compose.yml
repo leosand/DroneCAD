@@ -6,9 +6,10 @@
 #     rosbags, memory) sont lancés PAR LE CLIENT via .mcp.json — voir ADR-0006.
 # EN: Security baseline: non-root users, no privileged, ports bound to 127.0.0.1 only.
 # FR : Socle sécurité : utilisateurs non-root, aucun privileged, ports liés à 127.0.0.1.
-# EN: Phase 1 replaces `image: ros:jazzy` with the multi-stage Dockerfile (Gazebo Harmonic,
-#     ros_gz, ros2_control, MoveIt 2) — tracked in REPORT.md.
-# FR : La Phase 1 remplacera `image: ros:jazzy` par le Dockerfile multi-étapes — suivi dans REPORT.md.
+# EN: Phase 1 — ros2-jazzy is now built from docker/ros2-jazzy/Dockerfile (ROS 2 Jazzy + Gazebo
+#     Harmonic + ros_gz + ros2_control + MoveIt 2), non-root uid 1000.
+# FR : Phase 1 — ros2-jazzy est construit depuis docker/ros2-jazzy/Dockerfile (ROS 2 Jazzy + Gazebo
+#     Harmonic + ros_gz + ros2_control + MoveIt 2), non-root uid 1000.
 
 name: dronecad
 
@@ -16,7 +17,9 @@ services:
   # ROS 2 Jazzy + Gazebo Harmonic runtime (headless tests, rosbag recording)
   # / Exécution ROS 2 Jazzy + Gazebo Harmonic (tests sans interface, enregistrement de sacs)
   ros2-jazzy:
-    image: ros:jazzy
+    build:
+      context: ./docker/ros2-jazzy    # EN: multi-stage image / FR : image multi-étapes
+    image: dronecad/ros2-jazzy:0.1.0
     container_name: dronecad-ros2-jazzy
     # EN: uid 1000 = non-root; the Phase 1 Dockerfile creates the matching `ros` user.
     # FR : uid 1000 = non-root ; le Dockerfile Phase 1 créera l'utilisateur `ros` correspondant.

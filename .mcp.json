@@ -5,16 +5,9 @@
       "args": ["mcp-for-blender"]
     },
     "freecad": {
-      "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "--add-host=host.docker.internal:host-gateway",
-        "-e",
-        "FREECAD_MODE=xmlrpc",
-        "ghcr.io/spkane/freecad-robust-mcp"
-      ]
+      "command": "uvx",
+      "args": ["--from", "freecad-robust-mcp", "--with", "mcp<2", "freecad-mcp"],
+      "env": { "FREECAD_MODE": "xmlrpc" }
     },
     "ros2": {
       "command": "docker",
@@ -22,11 +15,9 @@
         "exec",
         "-i",
         "dronecad-ros2-jazzy",
-        "uv",
-        "--directory",
-        "/opt/ros2-mcp",
-        "run",
-        "mcp_ros_2_server"
+        "bash",
+        "-lc",
+        "source /opt/ros/jazzy/setup.bash && uv --directory /opt/ros2-mcp run mcp_ros_2_server"
       ]
     },
     "rosbags": {

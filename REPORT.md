@@ -9,7 +9,7 @@ Création du projet (repo GitHub privé `leosand/DroneCAD` + dossier local `E:/M
 
 ## Phase 0 — Matériel & modèle local — ✅ TERMINÉE
 
-- Sondes : RTX 4070 Ti SUPER 16 376 Mio (pilote 610.88) · Xeon W-2123 4c/8t · 31,7 Go RAM · Docker 29.7.2/WSL2 · Ollama 0.34.0 · Python 3.12.10 · Blender 5.2 (hôte) · FreeCAD absent (serveur MCP dockerisé).
+- Sondes : RTX 4070 Ti SUPER 16 376 Mio (pilote 610.88) · Xeon W-2123 4c/8t · 31,7 Go RAM · Docker 29.7.2/WSL2 · Ollama 0.34.0 · Python 3.12.10 · Blender 5.2 (hôte) · FreeCAD **1.1.3** (hôte, user-local — la première sonde ne couvrait que `Program Files`, corrigé).
 - Décision : **`gpt-oss:20b`** (14 Go, MXFP4) — `devstral:22b` inexistant, `devstral-small-2:24b` (15 Go) sans marge KV, `qwen3-coder-next` = 52 Go. Détails + preuves : `docs/phase-0-hardware.md`, ADR-0002.
 - **Incident runtime résolu** : gpt-oss crashe le backend `cuda_v13` d'Ollama (bug amont #17380/#18522, non corrigé — `0xc0000409` / `MUL_MAT`) → **serveur Ollama dédié `127.0.0.1:11499`** (`cuda_v12` + `FA=0` + `KV=f16` + ctx 8192), serveur principal `:11480` intact — ADR-0007, `scripts/start-ollama-gptoss.ps1`.
 - **Banc officiel** (`ollama run --verbose`, serveur dédié) : **115,44 tok/s** (eval, 1 189 tokens) · 222,96 tok/s (prefill) · cible brief ≥ 40 tok/s : **atteinte**.
