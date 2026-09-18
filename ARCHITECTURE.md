@@ -98,6 +98,20 @@
 
 ---
 
+## ADR-0007 — Dedicated Ollama runtime for `gpt-oss:20b` (upstream crash workaround)
+
+**Date:** 2026-09-18 · **Status:** accepted (runtime-verified)
+
+**Context.** On this machine (RTX 4070 Ti SUPER / Windows / Ollama 0.34.0), loading `gpt-oss:20b` on the main Ollama server (`127.0.0.1:11480`; `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0`, ctx 32768) crashes `llama-server` at init: `exit 0xc0000409 / CUDA error: shared object initialization failed` in `MUL_MAT` on the `cuda_v13` build. Other models (`gemma4`, `qwen2.5-coder`) run fine on the same server. This is a known, still-open upstream issue class (ollama #17380, #18522 — Windows/Ada + MXFP4). Locally verified in six isolated attempts (temporary servers, main server untouched): `FA=0` alone conflicts with q8_0 KV; `KV=f16` alone still crashes; `cuda_v13` + `FA=0` + `f16` still crashes; `cuda_v12` alone still crashes; **`cuda_v12` + `FA=0` + `KV=f16` works**; adding ctx 8192 yields **100 % GPU residency**.
+
+**Decision.** Serve DroneCAD's agentic model from a **dedicated Ollama server** on `127.0.0.1:11499` (`OLLAMA_LLM_LIBRARY=cuda_v12`, `OLLAMA_FLASH_ATTENTION=0`, `OLLAMA_KV_CACHE_TYPE=f16`, `OLLAMA_CONTEXT_LENGTH=8192`), launched by `scripts/start-ollama-gptoss.ps1`. The main server (`:11480`) and its global settings stay untouched for all other models and tooling. Benchmarked on this configuration: **115.44 tok/s eval, 222.96 tok/s prefill, 100 % GPU, 1 463 MiB VRAM free** (`docs/phase-0-hardware.md`).
+
+**Consequences.** DroneCAD stack components must target `:11499` for the agentic model (documented in README/REPORT). When an upstream Ollama release fixes the cuda_v13/MXFP4 crash, retire the dedicated server after re-benchmarking. The 8 192 context is the brief's own fallback rule. The 1 463 MiB free margin is ~5 % under the brief's strict 1.5 GiB threshold but stable (KV pre-allocated); the strictly-compliant alternative (`gemma4:12b`, level-4 fallback) is kept documented for the user to arbitrate.
+
+**Alternatives rejected.** Global environment change (`FA=0`/`cuda_v12` for every model — would regress unrelated tooling) · waiting for the upstream fix (blocks Phase 0) · model downgrade (kept as documented fallback, not default).
+
+---
+
 ## Current limits (2026-09-18)
 
 - Phase 1 runtime images not built yet: compose references the official `ros:jazzy` image; the multi-stage Dockerfile with Gazebo/`ros_gz`/`ros2_control`/MoveIt 2 lands in Phase 1.
