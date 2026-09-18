@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!-- DroneCAD — humanoid_description / package.xml
+     EN: URDF/Xacro description of the 28-DoF biped humanoid (primitive-based, phases 2+).
+     FR : description URDF/Xacro de l'humanoïde bipède 28 DoF (primitives, phases 2+). -->
+<package format="3">
+  <name>humanoid_description</name>
+  <version>0.1.0</version>
+  <description>DroneCAD humanoid biped description (URDF/Xacro, 28 DoF, sensors, ros2_control transmissions)</description>
+  <maintainer email="contact@example.com">DroneCAD</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

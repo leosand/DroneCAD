@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<!-- DroneCAD — macro jambe 6 DoF / 6-DoF leg macro (xacro).
+     EN: conventions — X forward, Y left, Z up (REP-103). Right side mirrors roll/yaw axes.
+     FR : conventions — X avant, Y gauche, Z haut (REP-103). Côté droit : axes roll/yaw inversés. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="humanoid_leg" params="side">
+    <xacro:property name="mirror" value="${1.0 if side == 'l' else -1.0}"/>
+
+    <!-- Hanche — lacet / hip yaw -->
+    <joint name="${side}_hip_yaw_joint" type="revolute">
+      <parent link="base_link"/>
+      <child link="${side}_hip_link"/>
+      <origin xyz="0 ${mirror * hip_offset_y} ${hip_offset_z}" rpy="0 0 0"/>
+      <axis xyz="0 0 ${mirror}"/>
+      <limit lower="-0.6" upper="0.6" effort="120" velocity="4.0"/>
+    </joint>
+    <link name="${side}_hip_link">
+      <visual><geometry><box size="0.10 0.08 0.10"/></geometry><material name="dronecad_dark"/></visual>
+      <collision><geometry><box size="0.10 0.08 0.10"/></geometry></collision>
+      <inertial><mass value="0.8"/><origin xyz="0 0 0"/><xacro:box_inertia m="0.8" x="0.10" y="0.08" z="0.10"/></inertial>
+    </link>
+
+    <!-- Hanche — roulis / hip roll -->
+    <joint name="${side}_hip_roll_joint" type="revolute">
+      <parent link="${side}_hip_link"/>
+      <child link="${side}_hip_roll_link"/>
+      <origin xyz="0 0 -0.05" rpy="0 0 0"/>
+      <axis xyz="${mirror} 0 0"/>
+      <limit lower="-0.6" upper="0.6" effort="120" velocity="4.0"/>
+    </joint>
+    <link name="${side}_hip_roll_link">
+      <visual><geometry><box size="0.08 0.08 0.08"/></geometry><material name="dronecad_dark"/></visual>
+      <collision><geometry><box size="0.08 0.08 0.08"/></geometry></collision>
+      <inertial><mass value="0.5"/><origin xyz="0 0 0"/><xacro:box_inertia m="0.5" x="0.08" y="0.08" z="0.08"/></inertial>
+    </link>
+
+    <!-- Hanche — tangage / hip pitch -->
+    <joint name="${side}_hip_pitch_joint" type="revolute">
+      <parent link="${side}_hip_roll_link"/>
+      <child link="${side}_thigh_link"/>
+      <origin xyz="0 0 -0.03" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="-1.6" upper="1.0" effort="150" velocity="5.0"/>
+    </joint>
+    <link name="${side}_thigh_link">
+      <visual><origin xyz="0 0 ${-thigh_len/2}"/><geometry><box size="0.12 0.14 ${thigh_len}"/></geometry><material name="dronecad_grey"/></visual>
+      <collision><origin xyz="0 0 ${-thigh_len/2}"/><geometry><box size="0.12 0.14 ${thigh_len}"/></geometry></collision>
+      <inertial><mass value="4.5"/><origin xyz="0 0 ${-thigh_len/2}"/><xacro:box_inertia m="4.5" x="0.12" y="0.14" z="${thigh_len}"/></inertial>
+    </link>
+
+    <!-- Genou / knee pitch (flexion négative) -->
+    <joint name="${side}_knee_pitch_joint" type="revolute">
+      <parent link="${side}_thigh_link"/>
+      <child link="${side}_shank_link"/>
+      <origin xyz="0 0 ${-thigh_len}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="-2.4" upper="0.10" effort="150" velocity="5.0"/>
+    </joint>
+    <link name="${side}_shank_link">
+      <visual><origin xyz="0 0 ${-shank_len/2}"/><geometry><box size="0.10 0.12 ${shank_len}"/></geometry><material name="dronecad_grey"/></visual>
+      <collision><origin xyz="0 0 ${-shank_len/2}"/><geometry><box size="0.10 0.12 ${shank_len}"/></geometry></collision>
+      <inertial><mass value="3.2"/><origin xyz="0 0 ${-shank_len/2}"/><xacro:box_inertia m="3.2" x="0.10" y="0.12" z="${shank_len}"/></inertial>
+    </link>
+
+    <!-- Cheville — tangage / ankle pitch -->
+    <joint name="${side}_ankle_pitch_joint" type="revolute">
+      <parent link="${side}_shank_link"/>
+      <child link="${side}_ankle_link"/>
+      <origin xyz="0 0 ${-shank_len}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="-0.7" upper="0.7" effort="80" velocity="4.0"/>
+    </joint>
+    <link name="${side}_ankle_link">
+      <visual><geometry><box size="0.08 0.08 0.06"/></geometry><material name="dronecad_dark"/></visual>
+      <collision><geometry><box size="0.08 0.08 0.06"/></geometry></collision>
+      <inertial><mass value="0.4"/><origin xyz="0 0 0"/><xacro:box_inertia m="0.4" x="0.08" y="0.08" z="0.06"/></inertial>
+    </link>
+
+    <!-- Cheville — roulis / ankle roll -->
+    <joint name="${side}_ankle_roll_joint" type="revolute">
+      <parent link="${side}_ankle_link"/>
+      <child link="${side}_foot_link"/>
+      <origin xyz="0 0 -0.03" rpy="0 0 0"/>
+      <axis xyz="${mirror} 0 0"/>
+      <limit lower="-0.4" upper="0.4" effort="80" velocity="4.0"/>
+    </joint>
+    <link name="${side}_foot_link">
+      <visual><origin xyz="${foot_fwd} 0 ${-(ankle_h - 0.03)}"/><geometry><box size="0.22 0.11 0.06"/></geometry><material name="dronecad_dark"/></visual>
+      <collision name="${side}_foot_collision"><origin xyz="${foot_fwd} 0 ${-(ankle_h - 0.03)}"/><geometry><box size="0.22 0.11 0.06"/></geometry></collision>
+      <inertial><mass value="0.9"/><origin xyz="${foot_fwd} 0 ${-(ankle_h - 0.03)}"/><xacro:box_inertia m="0.9" x="0.22" y="0.11" z="0.06"/></inertial>
+    </link>
+
+    <!-- Capteur de contact plantaire (Gazebo) / foot contact sensor (Gazebo) -->
+    <gazebo reference="${side}_foot_link">
+      <sensor name="${side}_foot_contact" type="contact">
+        <always_on>true</always_on>
+        <update_rate>50</update_rate>
+        <contact>
+          <collision>${side}_foot_collision</collision>
+        </contact>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+
+</robot>

@@ -36,13 +36,16 @@ FROM base AS runtime
 LABEL org.opencontainers.image.title="DroneCAD ros2-jazzy" \
       org.opencontainers.image.source="https://github.com/leosand/DroneCAD"
 
-# EN: non-root uid/gid 1000 — matches compose `user: "1000:1000"` / FR : non-root, aligné au compose
-RUN useradd -m -u 1000 -s /bin/bash ros && mkdir -p /workspace /artifacts
+# EN: the official ROS image already provides uid 1000 (`ubuntu`) — reuse it; adding a second
+#     `useradd -u 1000` fails (verified build error, 2026-09-18).
+# FR : l'image ROS officielle fournit déjà l'uid 1000 (`ubuntu`) — réutilisé ; un second
+#     `useradd -u 1000` échoue (erreur de build vérifiée le 2026-09-18).
+RUN mkdir -p /workspace /artifacts
 
 COPY --from=mcp /opt/ros2-mcp /opt/ros2-mcp
 COPY --from=mcp /root/.local/bin/uv /usr/local/bin/uv
 
-ENV HOME=/home/ros
+ENV HOME=/home/ubuntu
 RUN chown -R 1000:1000 /workspace /artifacts /opt/ros2-mcp
 
 USER 1000:1000

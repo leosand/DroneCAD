@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<!-- DroneCAD — macro bras 6 DoF / 6-DoF arm macro (xacro).
+     EN: conventions — X forward, Y left, Z up (REP-103). Right side mirrors roll/yaw axes.
+     FR : conventions — X avant, Y gauche, Z haut (REP-103). Côté droit : axes roll/yaw inversés. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="humanoid_arm" params="side">
+    <xacro:property name="mirror" value="${1.0 if side == 'l' else -1.0}"/>
+
+    <!-- Épaule — tangage / shoulder pitch -->
+    <joint name="${side}_shoulder_pitch_joint" type="revolute">
+      <parent link="torso_link"/>
+      <child link="${side}_shoulder_link"/>
+      <origin xyz="0 ${mirror * shoulder_offset_y} ${shoulder_offset_z}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="-2.6" upper="1.8" effort="60" velocity="6.0"/>
+    </joint>
+    <link name="${side}_shoulder_link">
+      <visual><geometry><box size="0.07 0.07 0.07"/></geometry><material name="dronecad_dark"/></visual>
+      <collision><geometry><box size="0.07 0.07 0.07"/></geometry></collision>
+      <inertial><mass value="0.3"/><origin xyz="0 0 0"/><xacro:box_inertia m="0.3" x="0.07" y="0.07" z="0.07"/></inertial>
+    </link>
+
+    <!-- Épaule — roulis / shoulder roll -->
+    <joint name="${side}_shoulder_roll_joint" type="revolute">
+      <parent link="${side}_shoulder_link"/>
+      <child link="${side}_upper_arm_link"/>
+      <origin xyz="0 ${mirror * 0.03} 0" rpy="0 0 0"/>
+      <axis xyz="${mirror} 0 0"/>
+      <limit lower="-1.5" upper="1.5" effort="60" velocity="6.0"/>
+    </joint>
+    <link name="${side}_upper_arm_link">
+      <visual><origin xyz="0 0 ${-arm_upper_len/2}"/><geometry><box size="0.09 0.09 ${arm_upper_len}"/></geometry><material name="dronecad_grey"/></visual>
+      <collision><origin xyz="0 0 ${-arm_upper_len/2}"/><geometry><box size="0.09 0.09 ${arm_upper_len}"/></geometry></collision>
+      <inertial><mass value="1.6"/><origin xyz="0 0 ${-arm_upper_len/2}"/><xacro:box_inertia m="1.6" x="0.09" y="0.09" z="${arm_upper_len}"/></inertial>
+    </link>
+
+    <!-- Épaule — lacet (torsion du bras) / shoulder yaw (arm twist) -->
+    <joint name="${side}_shoulder_yaw_joint" type="revolute">
+      <parent link="${side}_upper_arm_link"/>
+      <child link="${side}_upper_arm_twist_link"/>
+      <origin xyz="0 0 ${-arm_upper_len + 0.02}" rpy="0 0 0"/>
+      <axis xyz="0 0 ${mirror}"/>
+      <limit lower="-1.6" upper="1.6" effort="30" velocity="8.0"/>
+    </joint>
+    <link name="${side}_upper_arm_twist_link">
+      <visual><geometry><box size="0.06 0.06 0.06"/></geometry><material name="dronecad_dark"/></visual>
+      <collision><geometry><box size="0.06 0.06 0.06"/></geometry></collision>
+      <inertial><mass value="0.25"/><origin xyz="0 0 0"/><xacro:box_inertia m="0.25" x="0.06" y="0.06" z="0.06"/></inertial>
+    </link>
+
+    <!-- Coude — tangage (flexion négative) / elbow pitch -->
+    <joint name="${side}_elbow_pitch_joint" type="revolute">
+      <parent link="${side}_upper_arm_twist_link"/>
+      <child link="${side}_forearm_link"/>
+      <origin xyz="0 0 -0.02" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="-2.5" upper="0.05" effort="30" velocity="8.0"/>
+    </joint>
+    <link name="${side}_forearm_link">
+      <visual><origin xyz="0 0 ${-arm_fore_len/2}"/><geometry><box size="0.08 0.08 ${arm_fore_len}"/></geometry><material name="dronecad_grey"/></visual>
+      <collision><origin xyz="0 0 ${-arm_fore_len/2}"/><geometry><box size="0.08 0.08 ${arm_fore_len}"/></geometry></collision>
+      <inertial><mass value="1.2"/><origin xyz="0 0 ${-arm_fore_len/2}"/><xacro:box_inertia m="1.2" x="0.08" y="0.08" z="${arm_fore_len}"/></inertial>
+    </link>
+
+    <!-- Poignet — lacet / wrist yaw -->
+    <joint name="${side}_wrist_yaw_joint" type="revolute">
+      <parent link="${side}_forearm_link"/>
+      <child link="${side}_wrist_link"/>
+      <origin xyz="0 0 ${-arm_fore_len + 0.02}" rpy="0 0 0"/>
+      <axis xyz="0 0 ${mirror}"/>
+      <limit lower="-1.0" upper="1.0" effort="15" velocity="8.0"/>
+    </joint>
+    <link name="${side}_wrist_link">
+      <visual><geometry><box size="0.05 0.05 0.05"/></geometry><material name="dronecad_dark"/></visual>
+      <collision><geometry><box size="0.05 0.05 0.05"/></geometry></collision>
+      <inertial><mass value="0.15"/><origin xyz="0 0 0"/><xacro:box_inertia m="0.15" x="0.05" y="0.05" z="0.05"/></inertial>
+    </link>
+
+    <!-- Poignet — tangage / wrist pitch -->
+    <joint name="${side}_wrist_pitch_joint" type="revolute">
+      <parent link="${side}_wrist_link"/>
+      <child link="${side}_hand_link"/>
+      <origin xyz="0 0 -0.02" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="-1.0" upper="1.0" effort="15" velocity="8.0"/>
+    </joint>
+    <link name="${side}_hand_link">
+      <visual><origin xyz="0 0 ${-hand_len/2}"/><geometry><box size="0.08 0.05 ${hand_len}"/></geometry><material name="dronecad_blue"/></visual>
+      <collision><origin xyz="0 0 ${-hand_len/2}"/><geometry><box size="0.08 0.05 ${hand_len}"/></geometry></collision>
+      <inertial><mass value="0.4"/><origin xyz="0 0 ${-hand_len/2}"/><xacro:box_inertia m="0.4" x="0.08" y="0.05" z="${hand_len}"/></inertial>
+    </link>
+  </xacro:macro>
+
+</robot>

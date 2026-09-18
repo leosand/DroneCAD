@@ -1,0 +1,78 @@
+# DroneCAD — contrôleurs ros2_control / ros2_control controllers (humanoid, 28 joints)
+# EN: position controller is the default stance controller; the effort controller is available
+#     for torque-level experiments (start one group at a time).
+# FR : le contrôleur position est le contrôleur de posture par défaut ; le contrôleur effort
+#     est disponible pour les essais en couple (démarrer un groupe à la fois).
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+    joint_position_controller:
+      type: position_controllers/JointGroupPositionController
+    joint_effort_controller:
+      type: effort_controllers/JointGroupEffortController
+
+joint_position_controller:
+  ros__parameters:
+    joints:
+      - torso_yaw_joint
+      - torso_pitch_joint
+      - neck_yaw_joint
+      - neck_pitch_joint
+      - l_shoulder_pitch_joint
+      - l_shoulder_roll_joint
+      - l_shoulder_yaw_joint
+      - l_elbow_pitch_joint
+      - l_wrist_yaw_joint
+      - l_wrist_pitch_joint
+      - r_shoulder_pitch_joint
+      - r_shoulder_roll_joint
+      - r_shoulder_yaw_joint
+      - r_elbow_pitch_joint
+      - r_wrist_yaw_joint
+      - r_wrist_pitch_joint
+      - l_hip_yaw_joint
+      - l_hip_roll_joint
+      - l_hip_pitch_joint
+      - l_knee_pitch_joint
+      - l_ankle_pitch_joint
+      - l_ankle_roll_joint
+      - r_hip_yaw_joint
+      - r_hip_roll_joint
+      - r_hip_pitch_joint
+      - r_knee_pitch_joint
+      - r_ankle_pitch_joint
+      - r_ankle_roll_joint
+
+joint_effort_controller:
+  ros__parameters:
+    joints:
+      - torso_yaw_joint
+      - torso_pitch_joint
+      - neck_yaw_joint
+      - neck_pitch_joint
+      - l_shoulder_pitch_joint
+      - l_shoulder_roll_joint
+      - l_shoulder_yaw_joint
+      - l_elbow_pitch_joint
+      - l_wrist_yaw_joint
+      - l_wrist_pitch_joint
+      - r_shoulder_pitch_joint
+      - r_shoulder_roll_joint
+      - r_shoulder_yaw_joint
+      - r_elbow_pitch_joint
+      - r_wrist_yaw_joint
+      - r_wrist_pitch_joint
+      - l_hip_yaw_joint
+      - l_hip_roll_joint
+      - l_hip_pitch_joint
+      - l_knee_pitch_joint
+      - l_ankle_pitch_joint
+      - l_ankle_roll_joint
+      - r_hip_yaw_joint
+      - r_hip_roll_joint
+      - r_hip_pitch_joint
+      - r_knee_pitch_joint
+      - r_ankle_pitch_joint
+      - r_ankle_roll_joint

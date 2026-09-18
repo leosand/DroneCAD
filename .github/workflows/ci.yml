@@ -22,6 +22,11 @@ jobs:
         run: docker compose config -q
       - name: Stack validation / validation de la pile
         run: python3 scripts/validate_stack.py
+      - name: URDF structural checks / contrôles structurels URDF
+        run: |
+          python3 -m venv /tmp/urdfvenv
+          /tmp/urdfvenv/bin/pip install --quiet xacro pytest
+          /tmp/urdfvenv/bin/python -m pytest ws/src/humanoid_description/test/test_urdf.py -q
 
   secret-scan:
     # EN: compensating control — GitHub secret scanning / push protection are unavailable

@@ -1,0 +1,273 @@
+<?xml version="1.0"?>
+<!-- DroneCAD — humanoïde bipède 28 DoF / 28-DoF biped humanoid (URDF/Xacro).
+     EN: parametric primitives; masses and inertias derived from box volumes (box_inertia macro).
+         DoF: torso 2 (yaw+pitch) + neck 2 + arms 6x2 + legs 6x2 = 28. Conventions: X forward,
+         Y left, Z up (REP-103); right side mirrors roll/yaw axes.
+     FR : primitives paramétriques ; masses et inerties dérivées des volumes de boîtes.
+         DoF : torse 2 (lacet+tangage) + nuque 2 + bras 6x2 + jambes 6x2 = 28. Conventions :
+         X avant, Y gauche, Z haut (REP-103) ; côté droit : axes roll/yaw inversés.
+     Note ADR-0004 : source intermédiaire (script/générateur), le .blend maître Blender la remplacera. -->
+<robot name="humanoid" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ===================== Propriétés / properties ===================== -->
+  <!-- Jambes / legs -->
+  <xacro:property name="thigh_len" value="0.42"/>
+  <xacro:property name="shank_len" value="0.40"/>
+  <xacro:property name="ankle_h" value="0.075"/>
+  <xacro:property name="foot_fwd" value="0.05"/>
+  <xacro:property name="hip_offset_y" value="0.10"/>
+  <xacro:property name="hip_offset_z" value="-0.06"/>
+  <!-- Bras / arms -->
+  <xacro:property name="arm_upper_len" value="0.30"/>
+  <xacro:property name="arm_fore_len" value="0.27"/>
+  <xacro:property name="hand_len" value="0.16"/>
+  <xacro:property name="shoulder_offset_y" value="0.19"/>
+  <xacro:property name="shoulder_offset_z" value="0.39"/>  <!-- repère torse = bas du torse / torso frame at bottom -->
+  <!-- Torse / corps / head -->
+  <xacro:property name="base_mass" value="6.0"/>
+  <xacro:property name="waist_len" value="0.06"/>
+  <xacro:property name="torso_mass" value="9.0"/>
+
+  <!-- ===================== Matériaux / materials ===================== -->
+  <material name="dronecad_grey"><color rgba="0.62 0.62 0.66 1.0"/></material>
+  <material name="dronecad_dark"><color rgba="0.25 0.25 0.28 1.0"/></material>
+  <material name="dronecad_blue"><color rgba="0.10 0.35 0.75 1.0"/></material>
+
+  <!-- ===================== Macro inertie d'une boîte / box inertia ===================== -->
+  <xacro:macro name="box_inertia" params="m x y z">
+    <inertia ixx="${m*(y*y+z*z)/12.0}" ixy="0.0" ixz="0.0"
+             iyy="${m*(x*x+z*z)/12.0}" iyz="0.0"
+             izz="${m*(x*x+y*y)/12.0}"/>
+  </xacro:macro>
+
+  <xacro:include filename="humanoid_leg.xacro"/>
+  <xacro:include filename="humanoid_arm.xacro"/>
+
+  <!-- ===================== Base (bassin / pelvis) ===================== -->
+  <link name="base_link">
+    <visual><geometry><box size="0.30 0.20 0.22"/></geometry><material name="dronecad_grey"/></visual>
+    <collision><geometry><box size="0.30 0.20 0.22"/></geometry></collision>
+    <inertial><mass value="${base_mass}"/><origin xyz="0 0 0"/>
+      <xacro:box_inertia m="${base_mass}" x="0.30" y="0.20" z="0.22"/></inertial>
+  </link>
+
+  <!-- ===================== Torse / torso ===================== -->
+  <joint name="torso_yaw_joint" type="revolute">
+    <parent link="base_link"/><child link="waist_link"/>
+    <origin xyz="0 0 0.10" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.0" upper="1.0" effort="60" velocity="3.0"/>
+  </joint>
+  <link name="waist_link">
+    <visual><geometry><box size="0.18 0.14 0.08"/></geometry><material name="dronecad_dark"/></visual>
+    <collision><geometry><box size="0.18 0.14 0.08"/></geometry></collision>
+    <inertial><mass value="1.2"/><origin xyz="0 0 0"/><xacro:box_inertia m="1.2" x="0.18" y="0.14" z="0.08"/></inertial>
+  </link>
+
+  <joint name="torso_pitch_joint" type="revolute">
+    <parent link="waist_link"/><child link="torso_link"/>
+    <origin xyz="0 0 ${waist_len}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.5" upper="0.5" effort="80" velocity="3.0"/>
+  </joint>
+  <!-- Repère du torse à sa base ; le centre visuel est à +0.21 -->
+  <link name="torso_link">
+    <visual><origin xyz="0 0 0.21"/><geometry><box size="0.32 0.22 0.42"/></geometry><material name="dronecad_grey"/></visual>
+    <collision><origin xyz="0 0 0.21"/><geometry><box size="0.32 0.22 0.42"/></geometry></collision>
+    <inertial><mass value="${torso_mass}"/><origin xyz="0 0 0.21"/>
+      <xacro:box_inertia m="${torso_mass}" x="0.32" y="0.22" z="0.42"/></inertial>
+  </link>
+
+  <!-- ===================== Nuque + tête / neck + head ===================== -->
+  <joint name="neck_yaw_joint" type="revolute">
+    <parent link="torso_link"/><child link="neck_link"/>
+    <origin xyz="0 0 0.37" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.2" upper="1.2" effort="20" velocity="5.0"/>
+  </joint>
+  <link name="neck_link">
+    <visual><geometry><box size="0.08 0.08 0.06"/></geometry><material name="dronecad_dark"/></visual>
+    <collision><geometry><box size="0.08 0.08 0.06"/></geometry></collision>
+    <inertial><mass value="0.3"/><origin xyz="0 0 0"/><xacro:box_inertia m="0.3" x="0.08" y="0.08" z="0.06"/></inertial>
+  </link>
+
+  <joint name="neck_pitch_joint" type="revolute">
+    <parent link="neck_link"/><child link="head_link"/>
+    <origin xyz="0 0 0.05" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.6" upper="0.6" effort="20" velocity="5.0"/>
+  </joint>
+  <link name="head_link">
+    <visual><origin xyz="0 0 0.11"/><geometry><box size="0.20 0.18 0.22"/></geometry><material name="dronecad_blue"/></visual>
+    <collision><origin xyz="0 0 0.11"/><geometry><box size="0.20 0.18 0.22"/></geometry></collision>
+    <inertial><mass value="1.6"/><origin xyz="0 0 0.11"/>
+      <xacro:box_inertia m="1.6" x="0.20" y="0.18" z="0.22"/></inertial>
+  </link>
+
+  <!-- ===================== Membres / limbs ===================== -->
+  <xacro:humanoid_leg side="l"/>
+  <xacro:humanoid_leg side="r"/>
+  <xacro:humanoid_arm side="l"/>
+  <xacro:humanoid_arm side="r"/>
+
+  <!-- ===================== Capteurs / sensors (tête) ===================== -->
+  <!-- EN: IMU always on; the RGB-D camera can be disabled (enable_camera:=false) for headless
+       tests where rendering has no GPU. FR : IMU toujours actif ; la caméra RGB-D peut être
+       désactivée (enable_camera:=false) pour les tests sans GPU de rendu. -->
+  <xacro:arg name="enable_camera" default="true"/>
+  <gazebo reference="head_link">
+    <xacro:if value="$(arg enable_camera)">
+      <sensor name="head_rgbd" type="rgbd_camera">
+        <topic>/camera</topic>
+        <pose>0.11 0 0.11 0 0 0</pose>
+        <always_on>true</always_on>
+        <update_rate>30</update_rate>
+        <camera>
+          <horizontal_fov>1.204</horizontal_fov>
+          <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+          <clip><near>0.05</near><far>20.0</far></clip>
+        </camera>
+      </sensor>
+    </xacro:if>
+    <sensor name="head_imu" type="imu">
+      <topic>/imu</topic>
+      <always_on>true</always_on>
+      <update_rate>200</update_rate>
+    </sensor>
+  </gazebo>
+
+  <!-- ===================== ros2_control (gz_ros2_control) ===================== -->
+  <ros2_control name="humanoid_gz" type="system">
+    <hardware><plugin>gz_ros2_control/GazeboSimSystem</plugin></hardware>
+
+    <joint name="torso_yaw_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="torso_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="neck_yaw_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="neck_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+
+    <joint name="l_shoulder_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="l_shoulder_roll_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="l_shoulder_yaw_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="l_elbow_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="l_wrist_yaw_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="l_wrist_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+
+    <joint name="r_shoulder_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="r_shoulder_roll_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="r_shoulder_yaw_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="r_elbow_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="r_wrist_yaw_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="r_wrist_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+
+    <joint name="l_hip_yaw_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="l_hip_roll_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="l_hip_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="l_knee_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="l_ankle_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="l_ankle_roll_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+
+    <joint name="r_hip_yaw_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="r_hip_roll_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="r_hip_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="r_knee_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="r_ankle_pitch_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+    <joint name="r_ankle_roll_joint">
+      <command_interface name="position"/><command_interface name="effort"/>
+      <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+    </joint>
+  </ros2_control>
+
+  <!-- Contrôleurs gz_ros2_control / gz_ros2_control controllers (see humanoid_control)
+       EN: the YAML path is injected by the launch file, so standalone (ament-free) xacro
+           processing — local tests, CI — keeps working.
+       FR : le chemin du YAML est injecté par le launch, pour que le traitement xacro
+           standalone (sans ament — tests locaux, CI) continue de fonctionner. -->
+  <xacro:arg name="controllers_yaml" default=""/>
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(arg controllers_yaml)</parameters>
+    </plugin>
+  </gazebo>
+
+</robot>
