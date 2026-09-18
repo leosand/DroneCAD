@@ -1,0 +1,58 @@
+# DroneCAD — docker compose (squelette Phase 1 / Phase 1 skeleton)
+# ============================================================
+# EN: Runtime services only. stdio MCP servers (blender, freecad, ros2, rosbags, memory)
+#     are CLIENT-SPAWNED processes registered in .mcp.json — see ARCHITECTURE.md ADR-0006.
+# FR : Services d'exécution uniquement. Les serveurs MCP stdio (blender, freecad, ros2,
+#     rosbags, memory) sont lancés PAR LE CLIENT via .mcp.json — voir ADR-0006.
+# EN: Security baseline: non-root users, no privileged, ports bound to 127.0.0.1 only.
+# FR : Socle sécurité : utilisateurs non-root, aucun privileged, ports liés à 127.0.0.1.
+# EN: Phase 1 replaces `image: ros:jazzy` with the multi-stage Dockerfile (Gazebo Harmonic,
+#     ros_gz, ros2_control, MoveIt 2) — tracked in REPORT.md.
+# FR : La Phase 1 remplacera `image: ros:jazzy` par le Dockerfile multi-étapes — suivi dans REPORT.md.
+
+name: dronecad
+
+services:
+  # ROS 2 Jazzy + Gazebo Harmonic runtime (headless tests, rosbag recording)
+  # / Exécution ROS 2 Jazzy + Gazebo Harmonic (tests sans interface, enregistrement de sacs)
+  ros2-jazzy:
+    image: ros:jazzy
+    container_name: dronecad-ros2-jazzy
+    # EN: uid 1000 = non-root; the Phase 1 Dockerfile creates the matching `ros` user.
+    # FR : uid 1000 = non-root ; le Dockerfile Phase 1 créera l'utilisateur `ros` correspondant.
+    user: "1000:1000"
+    working_dir: /workspace
+    environment:
+      - ROS_DOMAIN_ID=42            # EN: isolated DDS domain / FR : domaine DDS isolé
+      - RCUTILS_COLORIZED_OUTPUT=1
+    volumes:
+      - ./ws:/workspace:rw          # EN: colcon workspace / FR : espace colcon
+      - ./artifacts:/artifacts:rw   # EN: test artifacts (bags, logs) / FR : artefacts (sacs, journaux)
+    networks: [agentnet]
+    security_opt: ["no-new-privileges:true"]
+    tty: true
+    init: true
+    restart: unless-stopped
+
+  # Local cognitive memory — REST API (the stdio MCP transport is registered in .mcp.json)
+  # / Mémoire cognitive locale — API REST (le transport MCP stdio est enregistré dans .mcp.json)
+  shodh-memory:
+    image: varunshodh/shodh-memory
+    container_name: dronecad-shodh-memory
+    user: "1000:1000"              # EN: non-root (uid to confirm Phase 1) / FR : non-root (uid à confirmer Phase 1)
+    ports:
+      - "127.0.0.1:3030:3030"      # EN: loopback only / FR : boucle locale uniquement
+    volumes:
+      - shodh-data:/data
+    networks: [agentnet]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+networks:
+  agentnet:
+    driver: bridge
+    # EN: no published ports — services are unreachable from outside the host by default.
+    # FR : aucun port publié — services inaccessibles depuis l'extérieur de l'hôte par défaut.
+
+volumes:
+  shodh-data:

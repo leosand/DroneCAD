@@ -1,0 +1,41 @@
+{
+  "mcpServers": {
+    "blender": {
+      "command": "uvx",
+      "args": ["mcp-for-blender"]
+    },
+    "freecad": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--add-host=host.docker.internal:host-gateway",
+        "-e",
+        "FREECAD_MODE=xmlrpc",
+        "ghcr.io/spkane/freecad-robust-mcp"
+      ]
+    },
+    "ros2": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "dronecad-ros2-jazzy",
+        "uv",
+        "--directory",
+        "/opt/ros2-mcp",
+        "run",
+        "mcp_ros_2_server"
+      ]
+    },
+    "rosbags": {
+      "command": "python",
+      "args": ["${DRONECAD_HOME}/vendor/mcp-rosbags/src/server.py"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@shodh/memory-mcp"]
+    }
+  }
+}

@@ -1,0 +1,24 @@
+# DroneCAD — CI (scaffold) — Phase 4 étoffera : colcon, Gazebo headless, Trivy
+# EN: validates compose + MCP registry + security baseline. Actions pinned by SHA (DevSecOps rule).
+# FR : valide le compose + le registre MCP + le socle sécurité. Actions épinglées par SHA.
+name: ci
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Compose config / validation du compose
+        run: docker compose config -q
+      - name: Stack validation / validation de la pile
+        run: python3 scripts/validate_stack.py
