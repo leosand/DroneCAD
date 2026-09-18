@@ -1,26 +1,32 @@
 {
-  "_note": "Allowlist d'outils MCP par phase (brief fondateur §4). Statut : PROVISOIRE pour blender (documenté par son amont), VOLONTAIREMENT VIDE pour les serveurs dont les noms d'outils doivent être figés depuis `python agent/agent_loop.py --list-tools <serveur>` lors de la validation Phase 3 — aucune entrée non validée n'est utilisée : le garde refuse tout ce qui est absent.",
+  "_note": "Allowlist d'outils MCP par phase (brief fondateur §4). blender et memory : VÉRIFIÉS par tools/list réel (2026-09-18, voir docs/mcp-tools-verified.md) — sous-ensembles pertinents retenus. Les autres serveurs restent VIDES tant que leurs noms d'outils réels n'ont pas été figés depuis `python agent/agent_loop.py --list-tools <serveur>` (le garde refuse tout ce qui est absent).",
   "design": {
-    "freecad": []
+    "freecad": [],
+    "memory": ["remember", "recall", "recall_by_tags", "context_summary"]
   },
   "model": {
     "blender": [
       "get_scene_info",
       "get_object_info",
       "execute_blender_code",
-      "get_viewport_screenshot"
+      "get_viewport_screenshot",
+      "export_scene"
     ],
-    "freecad": []
+    "freecad": [],
+    "memory": ["remember", "recall", "recall_by_tags", "context_summary"]
   },
   "simulate": {
     "ros2": [],
-    "blender": []
+    "blender": [],
+    "memory": ["remember", "recall", "recall_by_tags", "context_summary"]
   },
   "analyze": {
-    "rosbags": []
+    "rosbags": [],
+    "memory": ["remember", "recall", "recall_by_tags", "context_summary"]
   },
   "iterate": {
     "freecad": [],
-    "blender": []
+    "blender": ["execute_blender_code", "export_scene"],
+    "memory": ["remember", "recall", "recall_by_tags", "context_summary"]
   }
 }

@@ -236,6 +236,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="DroneCAD — boucle agentique MCP (garde-fous)")
     parser.add_argument("--list-tools", metavar="SERVEUR", help="tools/list réel via .mcp.json")
     parser.add_argument("--self-check", action="store_true", help="cohérence allowlist + journal")
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=60.0,
+        help="délai par requête MCP en secondes (init inclus) / per-request MCP timeout (s)",
+    )
     args = parser.parse_args(argv)
 
     if args.self_check:
@@ -250,8 +256,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         command, env = _mcp_command(server)
         client = StdioMCPClient(command, name=server, env={**__import__("os").environ, **env})
         try:
-            client.start()
-            tools = client.list_tools()
+            client.start(initialize_timeout_s=args.timeout)
+            tools = client.list_tools(timeout_s=args.timeout)
         finally:
             client.stop()
         print(json.dumps({"server": server, "count": len(tools),
