@@ -89,12 +89,15 @@ jobs:
               source /opt/ros/jazzy/setup.bash &&
               source /workspace/install/setup.bash &&
               echo '--- versions ---' && gz sim --versions ;
-              echo '--- interfaces ---' ; hostname -I || true ;
-              (timeout 75 gz sim -r -s /workspace/install/humanoid_gazebo/share/humanoid_gazebo/worlds/flat_ground_headless.sdf -v 4 > /tmp/gz.log 2>&1 &) ;
-              sleep 45 ;
-              echo '--- topics (après 45 s) ---' ; gz topic -l ;
-              echo '--- services du monde (3 premiers) ---' ; gz service -l 2>/dev/null | grep -m3 'create' ;
-              echo '--- journal serveur (60 premières lignes) ---' ; head -60 /tmp/gz.log"
+              echo '--- profil Fast DDS ---' ; ls -l /opt/dronecad/fastdds-localhost.xml ;
+              (timeout 260 gz sim -r -s /workspace/install/humanoid_gazebo/share/humanoid_gazebo/worlds/flat_ground_headless.sdf -v 4 > /tmp/gz.log 2>&1 &) ;
+              read_after() { echo \"--- après \$1 s : topics ---\" ; gz topic -l | head -4 ; echo \"--- après \$1 s : processus ---\" ; ps -o pid,pcpu,etime,comm -C gz,ruby 2>/dev/null | head -4 ; } ;
+              sleep 20 ; read_after 20 ;
+              sleep 25 ; read_after 45 ;
+              sleep 45 ; read_after 90 ;
+              sleep 60 ; read_after 150 ;
+              echo '--- profil chargé côté client ? ---' ; ros2 topic list | head -4 ;
+              echo '--- journal serveur (fin) ---' ; tail -25 /tmp/gz.log"
       - name: Headless Gazebo standing test (container)
         run: |
           docker run --rm --network host --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
