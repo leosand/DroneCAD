@@ -85,19 +85,25 @@ jobs:
           docker run --rm --network host --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
             -e GZ_IP=127.0.0.1 -e ROS_LOCALHOST_ONLY=1 -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
             -e FASTRTPS_DEFAULT_PROFILES_FILE=/opt/dronecad/fastdds-localhost.xml \
-            -v "$PWD/ws:/workspace" dronecad/ros2-jazzy:ci bash -lc "
-              source /opt/ros/jazzy/setup.bash &&
-              source /workspace/install/setup.bash &&
-              echo '--- versions ---' && gz sim --versions ;
-              echo '--- profil Fast DDS ---' ; ls -l /opt/dronecad/fastdds-localhost.xml ;
-              (timeout 260 gz sim -r -s /workspace/install/humanoid_gazebo/share/humanoid_gazebo/worlds/flat_ground_headless.sdf -v 4 > /tmp/gz.log 2>&1 &) ;
-              read_after() { echo \"--- après \$1 s : topics ---\" ; gz topic -l | head -4 ; echo \"--- après \$1 s : processus ---\" ; ps -o pid,pcpu,etime,comm -C gz,ruby 2>/dev/null | head -4 ; } ;
-              sleep 20 ; read_after 20 ;
-              sleep 25 ; read_after 45 ;
-              sleep 45 ; read_after 90 ;
-              sleep 60 ; read_after 150 ;
-              echo '--- profil chargé côté client ? ---' ; ros2 topic list | head -4 ;
-              echo '--- journal serveur (fin) ---' ; tail -25 /tmp/gz.log"
+            -v "$PWD/ws:/workspace" dronecad/ros2-jazzy:ci bash -lc '
+              source /opt/ros/jazzy/setup.bash && source /workspace/install/setup.bash ;
+              WORLD=/workspace/install/humanoid_gazebo/share/humanoid_gazebo/worlds/flat_ground_headless.sdf ;
+              echo "=== flags interfaces (0x1000 = IFF_MULTICAST) ===" ;
+              for i in lo eth0 ; do printf "%s: " $i ; cat /sys/class/net/$i/flags 2>/dev/null || echo absent ; done ;
+              echo "=== binaires gz-transport ===" ;
+              ls /opt/ros/jazzy/opt/gz_transport_vendor/bin/ 2>/dev/null || echo "(pas de bin)";
+              echo "=== DDS inter-processus (pub puis list/echo) ===" ;
+              ( timeout 45 ros2 topic pub -r 2 /dronecad_probe std_msgs/msg/String "{data: ping}" > /tmp/pub.log 2>&1 & ) ;
+              sleep 8 ;
+              echo "topics vus par un 2e processus :" ; ros2 topic list 2>/dev/null | head -6 ;
+              timeout 20 ros2 topic echo --once /dronecad_probe 2>&1 | head -3 ;
+              echo "=== gz cas defaut (aucune variable) ===" ;
+              ( env -u GZ_IP timeout 40 gz sim -r -s $WORLD > /tmp/gz_def.log 2>&1 & ) ;
+              sleep 20 ; env -u GZ_IP gz topic -l | head -3 ; pkill -f "gz sim" ; sleep 3 ;
+              echo "=== gz cas GZ_IP=127.0.0.1 ===" ;
+              ( GZ_IP=127.0.0.1 timeout 40 gz sim -r -s $WORLD > /tmp/gz_lo.log 2>&1 & ) ;
+              sleep 20 ; GZ_IP=127.0.0.1 gz topic -l | head -3 ; pkill -f "gz sim" ; sleep 2 ;
+              echo "=== fin sonde ==="'
       - name: Headless Gazebo standing test (container)
         run: |
           docker run --rm --network host --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
