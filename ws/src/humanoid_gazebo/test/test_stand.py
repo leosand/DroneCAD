@@ -10,6 +10,7 @@ FR : lance la simulation sans interface, échantillonne la pose du modèle via `
 
 from __future__ import annotations
 
+import glob
 import math
 import os
 import re
@@ -95,6 +96,16 @@ def _diagnostics() -> str:
             parts.append("".join(fh.readlines()[-40:]))
     except OSError as exc:
         parts.append(f"--- {log_path} illisible / unreadable: {exc} ---")
+    # EN: Gazebo server console logs — the only trace when `gz sim` stalls before printing
+    # FR : journaux console du serveur Gazebo — seule trace si `gz sim` bloque avant d'écrire
+    for base in (os.path.expanduser("~"), "/tmp"):
+        for path in sorted(glob.glob(os.path.join(base, ".gz", "sim", "*", "*.log"))):
+            try:
+                with open(path, encoding="utf-8", errors="replace") as fh:
+                    tail = "".join(fh.readlines()[-25:])
+            except OSError:
+                continue
+            parts.append(f"--- {path} (tail) ---\n{tail}")
     for label, cmd in (
         ("gz topics", ["gz", "topic", "-l"]),
         ("gz processes", ["pgrep", "-a", "gz"]),
@@ -111,6 +122,10 @@ def _diagnostics() -> str:
 
 
 def test_robot_stands_10_simulated_seconds() -> None:
+    # EN: headless world — no OGRE2/sensors plugin: on CI runners the renderer initialisation
+    #     never completes (no display/GPU), which silently blocked the whole server
+    # FR : monde sans rendu — pas de greffon OGRE2/capteurs : sur les runners CI l'initialisation
+    #     du moteur de rendu ne se termine jamais (ni écran ni GPU), ce qui bloquait le serveur
     log_path = os.environ.get("DRONECAD_LAUNCH_LOG", "/tmp/dronecad_launch.log")
     # EN: keep the launch output on disk — it is the only evidence when the spawn fails
     # FR : conserver la sortie du launch sur disque — seule preuve si le spawn échoue
@@ -118,7 +133,7 @@ def test_robot_stands_10_simulated_seconds() -> None:
     launch = subprocess.Popen(
         [
             "ros2", "launch", "humanoid_gazebo", "sim.launch.py",
-            "enable_camera:=false", "world_file:=flat_ground.sdf",
+            "enable_camera:=false", "world_file:=flat_ground_headless.sdf",
         ],
         stdout=log_file,
         stderr=subprocess.STDOUT,

@@ -20,9 +20,9 @@
 | 0. Hardware & local model | Probes, dependency audit, model selection, benchmark | ✅ Done — `gpt-oss:20b`, see [`docs/phase-0-hardware.md`](docs/phase-0-hardware.md) |
 | 1. Isolation & orchestration | Docker Compose, ROS 2 Jazzy + Gazebo Harmonic, MCP servers | ✅ Multi-stage image (`dronecad/ros2-jazzy:0.1.0`: Gazebo Harmonic 8.15.0, MoveIt 2, `gz_ros2_control`; vendored `ros2_mcp`), non-root containers (uid 1000), 3 s stack startup; FreeCAD `robust-mcp` bridge installed host-side |
 | 2. Humanoid design chain | `humanoid_description` / `humanoid_gazebo` / `humanoid_control` ROS 2 packages | ✅ 28-DoF humanoid: **stands ≥ 10 simulated seconds** (z = 1.065 m, roll/pitch ≈ 0), squat tracking 0.031 rad, 11/11 URDF tests (incl. `check_urdf`), colcon green |
-| 3. Agentic MCP loop | `agent_loop.py` (design → model → simulate → analyze → iterate) | 🟡 Guards + stdio client + 7 tests ✅; **5/5 MCP servers verified** — `tools/list`: blender 31, freecad 83, ros2 20, rosbags 15, memory 38, with **live tool calls** (Blender scene read, FreeCAD 1.1.3); end-to-end loop run pending |
-| 4. CI/CD & quality | colcon build, Gazebo headless tests, Trivy scans, multi-stage image | 🟡 Minimal CI green (compose/JSON/YAML + stack validation) |
-| 5. Verification | 7-item end-to-end checklist | 🟡 Tracked item-by-item in [`REPORT.md`](REPORT.md) |
+| 3. Agentic MCP loop | `agent_loop.py` (design → model → simulate → analyze → iterate) | ✅ Guards + stdio client + 7 tests; **5/5 MCP servers verified** — `tools/list`: blender 31, freecad 83, ros2 20, rosbags 15, memory 38, with **live tool calls**; **end-to-end loop `E2E_OK` (1/3 iterations)** — FreeCAD parametric bracket → STEP/STL → Blender `.blend` + GLB → Gazebo run + rosbag2 (17 656 msgs) → rosbags diagnosis (max joint effort 0.055 Nm) |
+| 4. CI/CD & quality | colcon build, Gazebo headless tests, Trivy scans, multi-stage image | ✅ 4 jobs — `lint` (ruff), `container-tests` (buildx + GHA cache → colcon + URDF tests + **standing test inside the shipped image** + **Trivy HIGH/CRITICAL fixable**), `validate`, `secret-scan` (gitleaks); actions pinned by SHA. First run `35412876213` failed on two real defects (Windows-chmod `EXE001`; 2 s spawn race) → fixed in `3e7635f`, see [`REPORT.md`](REPORT.md) § deviations |
+| 5. Verification | 8-item end-to-end checklist | ✅ 8/8 — item-by-item in [`REPORT.md`](REPORT.md) |
 
 ### Architecture
 
@@ -121,9 +121,9 @@ DroneCAD/
 | 0. Matériel & modèle local | Sondes, audit des dépendances, choix du modèle, banc d'essai | ✅ Terminé — `gpt-oss:20b`, voir [`docs/phase-0-hardware.md`](docs/phase-0-hardware.md) |
 | 1. Isolation & orchestration | Docker Compose, ROS 2 Jazzy + Gazebo Harmonic, serveurs MCP | ✅ Image multi-étapes (`dronecad/ros2-jazzy:0.1.0` : Gazebo Harmonic 8.15.0, MoveIt 2, `gz_ros2_control` ; `ros2_mcp` vendoré), conteneurs non-root (uid 1000), démarrage de pile 3 s ; pont FreeCAD `robust-mcp` installé côté hôte |
 | 2. Chaîne de conception humanoïde | Paquets ROS 2 `humanoid_description` / `humanoid_gazebo` / `humanoid_control` | ✅ Humanoïde 28 DoF : **debout ≥ 10 s simulées** (z = 1,065 m, roll/pitch ≈ 0), squat suivi 0,031 rad, 11/11 tests URDF (dont `check_urdf`), colcon vert |
-| 3. Boucle agentique MCP | `agent_loop.py` (concevoir → modéliser → simuler → analyser → itérer) | 🟡 Garde-fous + client stdio + 7 tests ✅ ; **5/5 serveurs MCP vérifiés** — `tools/list` : blender 31, freecad 83, ros2 20, rosbags 15, memory 38, avec **appels d'outils réels** (scène Blender lue, FreeCAD 1.1.3) ; boucle bout-en-bout à exécuter |
-| 4. CI/CD & qualité | build colcon, tests Gazebo sans interface, scan Trivy, image multi-étapes | 🟡 CI minimale verte (compose/JSON/YAML + validation de pile) |
-| 5. Vérification | Liste de contrôle de bout en bout (7 points) | 🟡 Suivie point par point dans [`REPORT.md`](REPORT.md) |
+| 3. Boucle agentique MCP | `agent_loop.py` (concevoir → modéliser → simuler → analyser → itérer) | ✅ Garde-fous + client stdio + 7 tests ; **5/5 serveurs MCP vérifiés** — `tools/list` : blender 31, freecad 83, ros2 20, rosbags 15, memory 38, avec **appels d'outils réels** ; **boucle bout-en-bout `E2E_OK` (1/3 itérations)** — équerre FreeCAD paramétrique → STEP/STL → Blender `.blend` + GLB → Gazebo + rosbag2 (17 656 messages) → diagnostic rosbags (effort articulaire max 0,055 Nm) |
+| 4. CI/CD & qualité | build colcon, tests Gazebo sans interface, scan Trivy, image multi-étapes | ✅ 4 tâches — `lint` (ruff), `container-tests` (buildx + cache GHA → colcon + tests URDF + **test debout dans l'image livrée** + **Trivy HIGH/CRITICAL corrigeables**), `validate`, `secret-scan` (gitleaks) ; actions épinglées par SHA. Premier run `35412876213` en échec sur deux défauts réels (chmod Windows `EXE001` ; course du spawn à 2 s) → corrigés en `3e7635f`, voir [`REPORT.md`](REPORT.md) § écarts |
+| 5. Vérification | Liste de contrôle de bout en bout (8 points) | ✅ 8/8 — détail point par point dans [`REPORT.md`](REPORT.md) |
 
 ### Matériel & modèle local (Phase 0, mesuré)
 

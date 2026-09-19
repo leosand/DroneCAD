@@ -1,0 +1,53 @@
+<?xml version="1.0" ?>
+<!-- DroneCAD — monde sol plat SANS rendu / flat-ground world WITHOUT rendering (CI headless).
+     EN: identical to flat_ground.sdf except the sensors/rendering system is NOT loaded. The
+         `gz-sim-sensors-system` plugin initialises the OGRE2 render engine at load time; on a
+         CI runner without display, GPU or /dev/dri that initialisation never completes and the
+         server stays silent forever — the robot is then never spawned (run 35412876213 /
+         35413419667, verified 2026-09-19). The standing test needs neither camera nor renderer.
+     FR : identique à flat_ground.sdf, sauf que le système de capteurs/rendu n'est PAS chargé.
+         Le greffon `gz-sim-sensors-system` initialise le moteur de rendu OGRE2 au chargement ;
+         sur un runner CI sans écran, sans GPU ni /dev/dri, cette initialisation ne se termine
+         jamais et le serveur reste muet indéfiniment — le robot n'est alors jamais spawné
+         (runs 35412876213 / 35413419667, vérifié le 2026-09-19). Le test debout n'a besoin ni
+         de caméra ni de rendu.
+     Mesure caméra+IMU (RTF 0,60) : utiliser flat_ground.sdf, à la machine (WSL2/mesa).
+     Camera+IMU measurement (RTF 0.60): use flat_ground.sdf, on the workstation (WSL2/mesa). -->
+<sdf version="1.10">
+  <world name="flat_ground_headless">
+    <physics name="default_physics" default="true" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
+
+    <light type="directional" name="sun">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>40 40</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>40 40</size></plane></geometry>
+          <material>
+            <ambient>0.65 0.65 0.65 1</ambient>
+            <diffuse>0.65 0.65 0.65 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>
