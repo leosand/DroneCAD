@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DroneCAD — profil Fast DDS « localhost » (sans multicast) pour la CI.
+     EN: GitHub runners provide no routable multicast, so default DDS discovery never
+         completes there — `ros2 node list` stayed empty while the nodes were alive, and the
+         robot was never spawned (runs 35412876213 / 35413419667 / 35414244557, 2026-09-19).
+         This profile replaces multicast discovery with explicit loopback peers; it is shipped
+         in the image but only activated where multicast is missing, through
+         FASTRTPS_DEFAULT_PROFILES_FILE (the workstation keeps default discovery).
+     FR : les runners GitHub n'offrent aucun multicast routable, donc la découverte DDS par
+         défaut ne s'y termine jamais — `ros2 node list` restait vide alors que les nœuds
+         tournaient, et le robot n'était jamais spawné (runs 35412876213 / 35413419667 /
+         35414244557, 2026-09-19). Ce profil remplace la découverte multicast par des pairs
+         loopback explicites ; il est embarqué dans l'image mais activé seulement là où le
+         multicast manque, via FASTRTPS_DEFAULT_PROFILES_FILE (la station garde le défaut).
+     Structure validée contre /opt/ros/jazzy/share/fastRTPS_profiles.xsd (builtinAttributesType
+     est une séquence : discovery_config puis initialPeersList).
+     Structure validated against /opt/ros/jazzy/share/fastRTPS_profiles.xsd. -->
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <participant profile_name="dronecad_localhost" is_default_profile="true">
+    <rtps>
+      <builtin>
+        <discovery_config>
+          <discoveryProtocol>SIMPLE</discoveryProtocol>
+        </discovery_config>
+        <initialPeersList>
+          <locator>
+            <udpv4>
+              <address>127.0.0.1</address>
+            </udpv4>
+          </locator>
+        </initialPeersList>
+      </builtin>
+    </rtps>
+  </participant>
+</profiles>

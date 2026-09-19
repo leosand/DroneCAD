@@ -82,21 +82,24 @@ jobs:
         # FR : GZ_IP + découverte limitée à localhost — les runners CI ont plusieurs interfaces
         #     et pas de multicast routable, ce qui bloque la découverte gz-transport/DDS.
         run: |
-          docker run --rm --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
+          docker run --rm --network host --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
             -e GZ_IP=127.0.0.1 -e ROS_LOCALHOST_ONLY=1 -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
+            -e FASTRTPS_DEFAULT_PROFILES_FILE=/opt/dronecad/fastdds-localhost.xml \
             -v "$PWD/ws:/workspace" dronecad/ros2-jazzy:ci bash -lc "
               source /opt/ros/jazzy/setup.bash &&
               source /workspace/install/setup.bash &&
               echo '--- versions ---' && gz sim --versions ;
               echo '--- interfaces ---' ; hostname -I || true ;
-              (timeout 45 gz sim -r -s /workspace/install/humanoid_gazebo/share/humanoid_gazebo/worlds/flat_ground_headless.sdf -v 4 > /tmp/gz.log 2>&1 &) ;
-              sleep 15 ;
-              echo '--- topics (après 15 s) ---' ; gz topic -l ;
+              (timeout 75 gz sim -r -s /workspace/install/humanoid_gazebo/share/humanoid_gazebo/worlds/flat_ground_headless.sdf -v 4 > /tmp/gz.log 2>&1 &) ;
+              sleep 45 ;
+              echo '--- topics (après 45 s) ---' ; gz topic -l ;
+              echo '--- services du monde (3 premiers) ---' ; gz service -l 2>/dev/null | grep -m3 'create' ;
               echo '--- journal serveur (60 premières lignes) ---' ; head -60 /tmp/gz.log"
       - name: Headless Gazebo standing test (container)
         run: |
-          docker run --rm --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
+          docker run --rm --network host --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
             -e GZ_IP=127.0.0.1 -e ROS_LOCALHOST_ONLY=1 -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
+            -e FASTRTPS_DEFAULT_PROFILES_FILE=/opt/dronecad/fastdds-localhost.xml \
             -v "$PWD/ws:/workspace" dronecad/ros2-jazzy:ci bash -lc "
               source /opt/ros/jazzy/setup.bash &&
               source /workspace/install/setup.bash &&
