@@ -94,10 +94,12 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
     )
 
-    # EN: controllers after spawn (controller_manager lives in the Gazebo plugin)
-    # FR : contrôleurs après le spawn (le controller_manager vit dans le plugin Gazebo)
+    # EN: controllers right after spawn (shorter unactuated window; the spawner waits for the
+    #     controller manager, which the Gazebo plugin starts with the model).
+    # FR : contrôleurs juste après le spawn (fenêtre non-actuée plus courte ; le spawner attend
+    #     le controller_manager, démarré par le plugin Gazebo avec le modèle).
     controllers = TimerAction(
-        period=6.0,
+        period=3.0,
         actions=[
             Node(
                 package="controller_manager",
