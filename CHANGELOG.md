@@ -4,6 +4,20 @@ Toutes les modifications notables de ce projet sont documentées ici.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) · Versioning : [SemVer](https://semver.org/lang/fr/) · Horodatage ISO 8601 (fuseau local).
 Les releases sont *delivery-gated* et **full-auto** : gérées par `.harness/scripts/release-check.py` (déclaré le 2026-09-18, mode `full-auto`).
 
+## [Unreleased]
+
+### Added
+
+- **Boucle agentique bout-en-bout** (`scripts/e2e_bracket.py`) exécutée et vérifiée : FreeCAD (équerre paramétrique via `execute_python` → STEP/STL) → Blender (import + enveloppe → `.blend` maître + GLB) → Gazebo headless + commande squat publiée par `ros2_topic_publish` (MCP) + rosbag2 (17 656 messages) → diagnostic rosbags (effort max 0,055 Nm) — **4/4 critères, 1 itération sur 3** ; journal JSONL à corrélation (`artifacts/e2e_journal.jsonl`).
+- `scripts/rosbags_mcp_server.py` — wrapper de compatibilité du serveur `mcp-rosbags` vendoré (rosbags moderne pour les bags Jazzy v9 + shims `deserialize_cdr`/`serialize_cdr`) ; `scripts/setup_rosbags_vendor.ps1` (venv dédié, pin `mcp<2`).
+- `agent/mcp_call.py` — appel direct d'un outil MCP (diagnostic/opérations).
+
+### Fixed
+
+- Outils haut niveau `freecad-robust-mcp` buggés sur FreeCAD 1.1.3 (`add_sketch_rectangle`, `pad_sketch`, `get_screenshot`, `save_document`, `export_stl` → tracebacks internes vérifiés) : la conception passe par `execute_python` + API Part, les appels d'évidence sont tolérants (décision rapportée dans `REPORT.md`).
+- Serveur `mcp-rosbags` inutilisable en l'état (dépôt stale : API rosbags pré-0.10, incompatible bags v9 ; `mcp` 2.x sans `Server.list_tools()`) → wrapper + venv dédié.
+- `.mcp.json` : expansion `${DRONECAD_HOME}` ajoutée au client interne ; entrée rosbags recâblée sur le venv vendoré.
+
 ## [v0.2.0] - 2026-09-18
 
 - **Phase 1** — image `dronecad/ros2-jazzy:0.1.0` multi-étapes (base : ROS 2 Jazzy + Gazebo Harmonic 8.15.0, `ros_gz` 1.0.24, `ros2_control` 4.48.0, MoveIt 2 2.12.4, `gz_ros2_control` 1.2.20 ; mcp : serveur `wise-vision/ros2_mcp` tag `2606` vendoré, venv **python système 3.12** avec assertion de build ; runtime : non-root uid 1000) ; conteneurs démarrés non-root, **démarrage de pile 3 s** ; pont FreeCAD natif `robust-mcp` v0.6.2 installé côté hôte.

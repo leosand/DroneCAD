@@ -12,7 +12,7 @@
 | `blender` — `uvx mcp-for-blender` (addon v1.7 activé, Blender 5.2, socket 9876) | ✅ | **31** | `get_scene_info`, `get_addon_status`, `execute_blender_code`, `export_scene`, `get_viewport_screenshot`, … |
 | `freecad` — `uvx --from freecad-robust-mcp --with 'mcp<2' freecad-mcp` (mode xmlrpc, FreeCAD 1.1.3, bridge auto-démarré `AutoStart`, XML-RPC 9875, socket 9877) | ✅ | **83** | `create_document`, `create_sketch`, `add_sketch_rectangle`, `pad_sketch`, `export_step`, `get_screenshot`, `list_documents`, … |
 | `ros2` — `docker exec dronecad-ros2-jazzy … /opt/ros2-mcp/.venv/bin/mcp_ros_2_server` (tag `2606`, venv python 3.12) | ✅ | **20** | `ros2_topic_list`, `ros2_topic_publish`, `ros2_service_call`, `ros2_send_action_goal`, `ros2_stream_*`, … |
-| `rosbags` — `uv run --with-requirements … --with 'rosbags<0.10' vendor/mcp-rosbags/src/server.py` | ✅ | **15** | `set_bag_path`, `bag_info`, `get_messages_in_range`, `analyze_trajectory`, `plot_timeseries`, `get_tf_tree`, … |
+| `rosbags` — `vendor/mcp-rosbags/.venv/Scripts/python.exe scripts/rosbags_mcp_server.py` (sous-module épinglé + **wrapper de compat** : rosbags moderne pour les bags Jazzy v9, shim `deserialize_cdr`/`serialize_cdr`, `mcp<2`) | ✅ vérifié | **15** | `set_bag_path`, `bag_info`, `get_messages_in_range`, `analyze_trajectory`, `plot_timeseries`, `get_tf_tree`, … — **lecture réelle d'un bag mcap v9** (17 656 messages) |
 | `memory` — `npx -y @shodh/memory-mcp` v0.2.0 | ✅ | **38** | `remember`, `recall`, `recall_by_tags`, `context_summary`, todos/projets, `backup_*`, … |
 
 ## Appels d'outils réels (chaîne complète prouvée)

@@ -69,13 +69,20 @@ class ToolCall:
 
 @dataclass
 class CallOutcome:
-    """Résultat d'un appel (journalisé) / journaled call outcome."""
+    """Résultat d'un appel (journalisé) / journaled call outcome.
+
+    EN: ``raw`` carries the untruncated tool result for callers that must parse it
+        (orchestrators); the journal itself only stores digests, never raw payloads.
+    FR : ``raw`` transporte le résultat intégral de l'outil pour les appelants qui doivent
+        le parser (orchestrateurs) ; le journal ne stocke que des digests, jamais les bruts.
+    """
 
     call: ToolCall
     ok: bool
     duration_ms: float
     result_digest: str | None
     error: str | None
+    raw: dict[str, Any] | None = None
 
 
 class PhaseGuard:
@@ -181,7 +188,7 @@ class AgentLoop:
             duration_ms=round(duration_ms, 1),
         )
         self._journal(entry)
-        return CallOutcome(call, True, duration_ms, str(entry["result_digest"]), None)
+        return CallOutcome(call, True, duration_ms, str(entry["result_digest"]), None, raw=result)
 
     # ---------------------------------------------------------------- boucle
     def run(
