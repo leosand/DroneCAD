@@ -4,9 +4,7 @@ Toutes les modifications notables de ce projet sont documentées ici.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) · Versioning : [SemVer](https://semver.org/lang/fr/) · Horodatage ISO 8601 (fuseau local).
 Les releases sont *delivery-gated* et **full-auto** : gérées par `.harness/scripts/release-check.py` (déclaré le 2026-09-18, mode `full-auto`).
 
-## [Unreleased]
-
-### Added
+## [v0.3.0] - 2026-09-19
 
 - **Mémoire cognitive locale opérationnelle, sans clé tierce** — `SHODH_API_KEYS` n'est pas un abonnement : c'est la clé que vous choisissez pour **votre propre** serveur `varunshodh/shodh-memory`. `.env.example` documente sa génération (`python -c "import secrets; print(secrets.token_hex(24))"`), `docker-compose.yml` l'injecte dans le service (`${SHODH_API_KEYS:-}` — vide = mode DEVELOPMENT, appels MCP en `503`), et `.mcp.json` l'expanse côté client sous le nom singulier `SHODH_API_KEY` (aucune clé en dur, garde-fou `validate_stack.py` satisfait). Appels réels vérifiés le 2026-09-19 : `memory_stats` (🐘 serveur v0.2.0), `remember`, puis `recall` à **95 % de pertinence** avec ID persistant.
 - `docs/USAGE.md` — mode d'emploi : brancher un client MCP, piloter la simulation, faire tourner la boucle agentique, interroger la mémoire.
