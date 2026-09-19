@@ -22,8 +22,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from agent_loop import _mcp_command  # noqa: E402
-from mcp_stdio import StdioMCPClient  # noqa: E402
+from agent_loop import _mcp_command
+from mcp_stdio import StdioMCPClient
 
 MAX_PRINT_CHARS = 2000
 

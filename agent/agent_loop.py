@@ -20,10 +20,11 @@ import json
 import sys
 import time
 import uuid
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Mapping, Protocol, Sequence
+from typing import Any, Protocol
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MCP_CONFIG = REPO_ROOT / ".mcp.json"
@@ -252,7 +253,9 @@ def _mcp_command(server: str) -> tuple[list[str], dict[str, str]]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    from mcp_stdio import StdioMCPClient  # import local : venv/CI plus simples / local import
+    from mcp_stdio import (
+        StdioMCPClient,  # import local : venv/CI plus simples / local import
+    )
 
     parser = argparse.ArgumentParser(description="DroneCAD — boucle agentique MCP (garde-fous)")
     parser.add_argument("--list-tools", metavar="SERVEUR", help="tools/list réel via .mcp.json")

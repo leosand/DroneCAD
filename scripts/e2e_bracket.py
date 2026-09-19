@@ -29,8 +29,15 @@ from typing import Any
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "agent"))
 
-from agent_loop import AgentLoop, IterationLimitReached, PhaseGuard, ToolCall, _mcp_command, load_allowlist  # noqa: E402
-from mcp_stdio import StdioMCPClient  # noqa: E402
+from agent_loop import (
+    AgentLoop,
+    IterationLimitReached,
+    PhaseGuard,
+    ToolCall,
+    _mcp_command,
+    load_allowlist,
+)
+from mcp_stdio import StdioMCPClient
 
 ART = REPO / "artifacts"
 JOURNAL = ART / "e2e_journal.jsonl"
@@ -138,7 +145,7 @@ class EndToEnd:
     def docker(self, script: str, timeout: float = 180.0) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             ["docker", "exec", CONTAINER, "bash", "-lc", script],
-            capture_output=True, text=True, timeout=timeout,
+            capture_output=True, text=True, timeout=timeout, check=False,
         )
 
     # ------------------------------------------------------------------ phases
@@ -300,7 +307,7 @@ ls /artifacts/e2e_bag 2>/dev/null | head -5
         pose = self.docker(
             "source /opt/ros/jazzy/setup.bash && timeout 10 gz topic -e -t /model/humanoid/pose -n 1 2>/dev/null"
         )
-        z_match = re.search(r"position\s*\{[^}]*?z:\s*([-0-9.eE+]+)", pose.stdout, re.S)
+        z_match = re.search(r"position\s*\{[^}]*?z:\s*([-0-9.eE+]+)", pose.stdout, re.DOTALL)
         out["z"] = float(z_match.group(1)) if z_match else None
 
         self.docker(cleanup)

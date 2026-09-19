@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 COMPOSE = ROOT / "docker-compose.yml"
 MCP = ROOT / ".mcp.json"
 
-SECRET_HINT = re.compile(r"(TOKEN|SECRET|API[_-]?KEY|PASSWORD|CREDENTIAL)", re.I)
+SECRET_HINT = re.compile(r"(TOKEN|SECRET|API[_-]?KEY|PASSWORD|CREDENTIAL)", re.IGNORECASE)
 LOOPBACK_RE = re.compile(r"^https?://(127\.0\.0\.1|localhost)(:\d+)?(/|$)")
 
 errors: list[str] = []
@@ -42,6 +42,7 @@ def load_compose() -> dict:
             ["docker", "compose", "-f", str(COMPOSE), "config", "--format", "json"],
             capture_output=True,
             text=True,
+            check=False,
         )
         if r.returncode == 0:
             return json.loads(r.stdout)

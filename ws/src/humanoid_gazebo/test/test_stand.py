@@ -39,15 +39,16 @@ def _sample_pose(timeout_s: float = 6.0) -> tuple[float, float, float] | None:
             capture_output=True,
             text=True,
             timeout=timeout_s,
+            check=False,
         ).stdout
     except subprocess.TimeoutExpired:
         return None
-    z_m = re.search(r"position\s*\{[^}]*?z:\s*([-0-9.eE+]+)", out, re.S)
+    z_m = re.search(r"position\s*\{[^}]*?z:\s*([-0-9.eE+]+)", out, re.DOTALL)
     ori = re.search(
         r"orientation\s*\{[^}]*?x:\s*([-0-9.eE+]+)[^}]*?y:\s*([-0-9.eE+]+)"
         r"[^}]*?z:\s*([-0-9.eE+]+)[^}]*?w:\s*([-0-9.eE+]+)",
         out,
-        re.S,
+        re.DOTALL,
     )
     if not z_m or not ori:
         return None
@@ -66,6 +67,7 @@ def _sim_seconds(timeout_s: float = 15.0) -> float | None:
             capture_output=True,
             text=True,
             timeout=timeout_s,
+            check=False,
         ).stdout
     except subprocess.TimeoutExpired:
         return None
@@ -84,7 +86,7 @@ def test_robot_stands_10_simulated_seconds() -> None:
         ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
-        preexec_fn=os.setsid,
+        start_new_session=True,
     )
     try:
         # EN: wait until the robot is spawned (pose available, z plausible)

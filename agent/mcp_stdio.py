@@ -20,7 +20,8 @@ import subprocess
 import threading
 import time
 from collections import deque
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any, Self
 
 PROTOCOL_VERSION = "2025-06-18"
 
@@ -99,7 +100,7 @@ class StdioMCPClient:
             except Exception:  # noqa: BLE001 - arrêt best-effort / best-effort shutdown
                 proc.kill()
 
-    def __enter__(self) -> "StdioMCPClient":
+    def __enter__(self) -> Self:
         self.start()
         return self
 

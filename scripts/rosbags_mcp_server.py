@@ -34,10 +34,10 @@ if not VENDOR_SRC.is_dir():
     )
 
 # 1) Shim de l'API historique AVANT l'import du serveur vendoré.
-import rosbags.serde as _serde  # noqa: E402
+import rosbags.serde as _serde
 
 if not hasattr(_serde, "deserialize_cdr") or not hasattr(_serde, "serialize_cdr"):
-    from rosbags.typesys import Stores, get_typestore  # noqa: E402
+    from rosbags.typesys import Stores, get_typestore
 
     _store = get_typestore(Stores.ROS2_JAZZY)
 

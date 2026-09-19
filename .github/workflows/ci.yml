@@ -1,6 +1,7 @@
-# DroneCAD — CI (scaffold) — Phase 4 étoffera : colcon, Gazebo headless, Trivy
-# EN: validates compose + MCP registry + security baseline. Actions pinned by SHA (DevSecOps rule).
-# FR : valide le compose + le registre MCP + le socle sécurité. Actions épinglées par SHA.
+# DroneCAD — CI — Phase 4 : lint, image + colcon + Gazebo headless, scan Trivy
+# EN: quality gate. Trivy policy: HIGH/CRITICAL *fixable* only (documented in REPORT.md).
+# FR : porte qualité. Politique Trivy : HIGH/CRITICAL *corrigeables* uniquement (documenté dans REPORT.md).
+# EN: actions pinned by SHA (harness DevSecOps rule) / FR : actions épinglées par SHA.
 name: ci
 
 on:
@@ -11,6 +12,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -30,11 +35,60 @@ jobs:
       - name: Agent guard tests / tests des garde-fous agentiques
         run: /tmp/urdfvenv/bin/python -m pytest agent/tests -q
 
+  lint:
+    # EN: ruff on the agentic layer + ROS 2 packages / FR : ruff sur la couche agentique + paquets ROS 2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Ruff — Python lint
+        run: |
+          python3 -m venv /tmp/lintvenv
+          /tmp/lintvenv/bin/pip install --quiet ruff
+          /tmp/lintvenv/bin/ruff check agent scripts ws/src
+
+  container-tests:
+    # EN: builds the shipped image (GHA layer cache), runs colcon + the headless standing test
+    #     inside it, then Trivy-scans the image. Runner uid is mapped so bind mounts stay writable.
+    # FR : construit l'image livrée (cache de couches GHA), exécute colcon + le test debout headless
+    #     dedans, puis scanne l'image avec Trivy. L'uid du runner est mappé pour les montages.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build image (buildx + cache GHA)
+        run: |
+          docker buildx build --load \
+            --cache-from type=gha --cache-to type=gha,mode=max \
+            -t dronecad/ros2-jazzy:ci docker/ros2-jazzy
+      - name: Colcon build + URDF tests (container)
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
+            -v "$PWD/ws:/workspace" dronecad/ros2-jazzy:ci bash -lc "
+              source /opt/ros/jazzy/setup.bash &&
+              cd /workspace && colcon build &&
+              source install/setup.bash &&
+              python3 -m pytest /workspace/src/humanoid_description/test/test_urdf.py -q"
+      - name: Headless Gazebo standing test (container)
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
+            -v "$PWD/ws:/workspace" dronecad/ros2-jazzy:ci bash -lc "
+              source /opt/ros/jazzy/setup.bash &&
+              source /workspace/install/setup.bash &&
+              cd /workspace && python3 -m pytest src/humanoid_gazebo/test/test_stand.py -q -s"
+      - name: Trivy scan (HIGH/CRITICAL fixables)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: dronecad/ros2-jazzy:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
   secret-scan:
     # EN: compensating control — GitHub secret scanning / push protection are unavailable
     #     on private repos without GitHub Advanced Security (API 422, verified 2026-09-18).
     # FR : contrôle compensatoire — le scan de secrets GitHub et la protection contre l'envoi
-    #     sont indisponibles sur un repo privé sans GHAS (API 422, vérifié 2026-09-18).
+    #     sont indisponibles sur un repo privé sans GHAS (API 422, vérifié le 2026-09-18).
     runs-on: ubuntu-latest
     permissions:
       contents: read

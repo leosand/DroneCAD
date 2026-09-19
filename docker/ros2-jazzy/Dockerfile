@@ -41,7 +41,19 @@ RUN git clone --depth 1 --branch 2606 https://github.com/wise-vision/ros2_mcp /o
  && rm -f .python-version \
  && UV_PYTHON_DOWNLOADS=never /root/.local/bin/uv venv --python /usr/bin/python3.12 --no-managed-python \
  && UV_PYTHON_DOWNLOADS=never /root/.local/bin/uv sync --python /usr/bin/python3.12 --no-managed-python \
- && /opt/ros2-mcp/.venv/bin/python -c "import sys; assert sys.version_info[:2] == (3, 12), sys.version"
+ && /opt/ros2-mcp/.venv/bin/python -c "import sys; assert sys.version_info[:2] == (3, 12), sys.version" \
+ && UV_PYTHON_DOWNLOADS=never /root/.local/bin/uv pip install --python /opt/ros2-mcp/.venv/bin/python \
+      --upgrade \
+      "pillow>=12.3.0" \
+      "cryptography>=50.0.0" \
+      "python-multipart>=0.0.30"
+
+# EN: the last step is a targeted security bump — Trivy HIGH/CRITICAL *fixable* findings in the
+#     vendored venv (2026-09-19): pillow (CVE-2026-42311 arbitrary code exec, …), cryptography
+#     (CVE-2026-69247 oracle), python-multipart (CVE-2026-24486 path traversal).
+# FR : la dernière étape est un correctif de sécurité ciblé — constats Trivy HIGH/CRITICAL
+#     corrigeables dans le venv vendoré (2026-09-19) : pillow (exécution de code, …), cryptography
+#     (oracle), python-multipart (traversée de chemin).
 
 # ---------- Stage 3 : runtime (image livrée) ----------
 FROM base AS runtime

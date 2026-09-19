@@ -112,6 +112,20 @@
 
 ---
 
+## ADR-0008 — `mcp-rosbags`: compatibility wrapper now, formal fork only if upstream stays frozen
+
+**Date:** 2026-09-19 · **Status:** accepted
+
+**Context.** The audited `binabik-ai/mcp-rosbags` (Apache-2.0, last upstream commit 2025-09) cannot run as-is on a ROS 2 Jazzy stack: (1) its pre-0.10 `rosbags` API cannot read Jazzy's rosbag2 metadata v9 (« version 9 not supported » — verified on our own bags), while modern `rosbags` removed the API it imports (`rosbags.serde.deserialize_cdr` / `serialize_cdr`); (2) `mcp` 2.x removed the low-level `Server.list_tools()` it uses (verified: `mcp` 2.2.0 fails, 1.29/1.30 works).
+
+**Decision.** Keep the pristine submodule and run it through **`scripts/rosbags_mcp_server.py`** — a wrapper that (a) restores the legacy function names on top of the modern typestore (`Stores.ROS2_JAZZY`) and (b) runs under a dedicated venv pinned `mcp<2` (`scripts/setup_rosbags_vendor.ps1`). Verified end-to-end: `bag_info` + `get_messages_in_range` read a 17 656-message mcap v9 bag produced by our own loop.
+
+**Consequences / fork criteria.** The wrapper is ~60 lines and behaviour-transparent. A formal fork (publish `leosand/mcp-rosbags`, patched in-tree) becomes the right move if any of: upstream still frozen 6+ months from today; the wrapper needs more than two additional shims; or a feature is needed on our side (configurable typestore, mcap v9 writer). Until then, the wrapper keeps provenance clean (submodule at the upstream commit + a dated, documented compat layer).
+
+**Alternatives rejected.** Pinning `rosbags<0.10` (cannot read v9 bags — fails on our own artifacts) · forking today (maintenance burden without a second consumer yet) · rewriting the server (out of scope for Phase 3).
+
+---
+
 ## Current limits (2026-09-18)
 
 - Phase 1 runtime images not built yet: compose references the official `ros:jazzy` image; the multi-stage Dockerfile with Gazebo/`ros_gz`/`ros2_control`/MoveIt 2 lands in Phase 1.

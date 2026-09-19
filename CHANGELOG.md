@@ -8,12 +8,17 @@ Les releases sont *delivery-gated* et **full-auto** : gérées par `.harness/scr
 
 ### Added
 
+- **Phase 4 (CI)** — jobs `lint` (ruff sur `agent/`, `scripts/`, `ws/src/`), `container-tests` (buildx + cache GHA → colcon + tests URDF + **test debout headless dans l'image livrée** + **scan Trivy** HIGH/CRITICAL corrigeables) ; concurrence annulée par réf ; actions épinglées par SHA (dont `aquasecurity/trivy-action` v0.36.0).
+- **Caméra headless vérifiée** : `enable_camera:=true` publie `/camera`, `/camera/image`, `/camera/depth_image`, `/camera/points` (rendu logiciel mesa, zéro erreur) ; **RTF caméra+IMU mesuré à 0,60** (vs 0,50 sans caméra — limite CPU documentée, écart 11).
+- ADR-0008 : décision `mcp-rosbags` (wrapper de compatibilité, critères de fork explicites).
 - **Boucle agentique bout-en-bout** (`scripts/e2e_bracket.py`) exécutée et vérifiée : FreeCAD (équerre paramétrique via `execute_python` → STEP/STL) → Blender (import + enveloppe → `.blend` maître + GLB) → Gazebo headless + commande squat publiée par `ros2_topic_publish` (MCP) + rosbag2 (17 656 messages) → diagnostic rosbags (effort max 0,055 Nm) — **4/4 critères, 1 itération sur 3** ; journal JSONL à corrélation (`artifacts/e2e_journal.jsonl`).
 - `scripts/rosbags_mcp_server.py` — wrapper de compatibilité du serveur `mcp-rosbags` vendoré (rosbags moderne pour les bags Jazzy v9 + shims `deserialize_cdr`/`serialize_cdr`) ; `scripts/setup_rosbags_vendor.ps1` (venv dédié, pin `mcp<2`).
 - `agent/mcp_call.py` — appel direct d'un outil MCP (diagnostic/opérations).
 
 ### Fixed
 
+- **Sécurité image** : bumps ciblés dans le venv vendoré (`pillow>=12.3.0`, `cryptography>=50.0.0`, `python-multipart>=0.0.30`) — constats Trivy HIGH/CRITICAL corrigeables précédents sur l'image (OS et paquets ROS déjà propres).
+- Lint : 20+ constats ruff corrigés (agent, scripts, tests ROS 2) ; `preexec_fn=os.setsid` → `start_new_session=True` dans le test debout.
 - Outils haut niveau `freecad-robust-mcp` buggés sur FreeCAD 1.1.3 (`add_sketch_rectangle`, `pad_sketch`, `get_screenshot`, `save_document`, `export_stl` → tracebacks internes vérifiés) : la conception passe par `execute_python` + API Part, les appels d'évidence sont tolérants (décision rapportée dans `REPORT.md`).
 - Serveur `mcp-rosbags` inutilisable en l'état (dépôt stale : API rosbags pré-0.10, incompatible bags v9 ; `mcp` 2.x sans `Server.list_tools()`) → wrapper + venv dédié.
 - `.mcp.json` : expansion `${DRONECAD_HOME}` ajoutée au client interne ; entrée rosbags recâblée sur le venv vendoré.

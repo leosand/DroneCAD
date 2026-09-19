@@ -14,7 +14,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from agent_loop import (  # noqa: E402
+from agent_loop import (
     AgentLoop,
     IterationLimitReached,
     PhaseGuard,
@@ -22,7 +22,7 @@ from agent_loop import (  # noqa: E402
     ToolNotAllowed,
     sha256_digest,
 )
-from mcp_stdio import MCPTimeout  # noqa: E402
+from mcp_stdio import MCPTimeout
 
 ALLOWLIST = {
     "design": {"freecad": ["create_document", "export_step"]},

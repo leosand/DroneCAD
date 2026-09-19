@@ -46,7 +46,9 @@ def robot() -> ET.Element:
     command = _xacro_command()
     if command is None:
         pytest.skip("xacro introuvable / xacro not found")
-    result = subprocess.run(command + [str(XACRO_FILE)], capture_output=True, text=True)
+    result = subprocess.run(
+        command + [str(XACRO_FILE)], capture_output=True, text=True, check=False
+    )
     assert result.returncode == 0, f"xacro a échoué / failed:\n{result.stderr}"
     return ET.fromstring(result.stdout)
 
@@ -159,5 +161,5 @@ def test_check_urdf_binary(robot: ET.Element, tmp_path: Path, urdf_text: str) ->
         pytest.skip("check_urdf introuvable / not found (urdfdom)")
     urdf_file = tmp_path / "humanoid.urdf"
     urdf_file.write_text(urdf_text, encoding="utf-8")
-    result = subprocess.run([check, str(urdf_file)], capture_output=True, text=True)
+    result = subprocess.run([check, str(urdf_file)], capture_output=True, text=True, check=False)
     assert result.returncode == 0, f"check_urdf a échoué / failed:\n{result.stdout}\n{result.stderr}"
