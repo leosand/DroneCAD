@@ -114,6 +114,8 @@ build   : colcon 3 paquets (18,8 s) · URDF 11/11 · garde-fous 7/7 · ruff « A
 gazebo  : debout 10 s (z=1,065) · squat 0,031 rad · RTF 0.50 (sans) / 0.60 (caméra+IMU) · /camera/* publiés
 mcp     : tools/list 5/5 · appels réels blender/freecad/ros2 · bag v9 lu par rosbags (17 656 msgs)
 e2e     : E2E_OK 1/3 — STEP/STL/BLEND/GLB + bag + diagnostic effort 0,055 Nm ; journal 44 entrées
+e2e (2) : E2E_OK après rebuild (anyio) — bag 11 526 msgs (/clock 8 882, /imu 1 766), z=1,0558 m, effort max 0,0554 Nm, 4/4 critères
+tests   : docs/TESTING.md — procédure de validation à 6 niveaux (prérequis → CI), commandes et résultats attendus mesurés
 trivy   : image dronecad/ros2-jazzy:0.1.0 → 0 HIGH/CRITICAL corrigeable (local, 0.74.0) ; CI : image propre après bump anyio (CVE-2026-63374)
 ci      : run 35418441478 → validate ✅ lint ✅ container-tests ✅ (colcon + fumée Gazebo + debout dans l'image + Trivy) secret-scan ✅
 ollama  : gpt-oss:20b 100% GPU ctx 8192 — 115,44 tok/s · 1 463 Mio libres
@@ -136,3 +138,4 @@ releases: v0.1.0 · v0.2.0 (vérifiées) · [Unreleased] prêt pour la prochaine
 | ~21:00 | **E2E_OK** (équerre→Blender→sim+bag→diagnostic) ; wrapper rosbags v9 |
 | ~21:30 | **Phase 4** : CI lint/container-tests/Trivy ; caméra headless + RTF 0,60 ; bumps sécurité ; **Trivy local propre** ; ADR-0008 |
 | ~22:00–23:20 | **CI verte** (run `35418441478`) après cinq runs rouges : `EXE001` (chmod Windows), course du spawn → `spawn_ready.py`, monde OGRE2 → `flat_ground_headless.sdf`, **uid 1001 sans entrée passwd → gz-transport muet**, CVE CRITICAL `anyio` corrigée ; instrumentation du test et étape de fumée ajoutées |
+| ~23:30–00:10 | Conteneur recréé sur l'image à jour (anyio 4.15.1, uid 1000) ; **boucle E2E re-mesurée `E2E_OK`** (11 526 msgs, z = 1,0558 m, effort 0,0554 Nm) ; garde-fou `${VAR}` non définie dans le client MCP ; `docs/TESTING.md` (procédure de test) |

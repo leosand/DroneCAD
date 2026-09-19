@@ -69,6 +69,10 @@ python scripts/validate_stack.py    # loopback-only ports, no privileged, no sec
 
 **MCP registration note** — `.mcp.json` is the canonical registry for stdio MCP clients (Claude Code / Cursor read it as-is); the `rosbags` entry uses `${DRONECAD_HOME}` (set it to this repository's absolute path). Kimi Code does not read `.mcp.json` natively today — per-client registration is a Phase 3 item (see `REPORT.md`).
 
+**Want to validate everything yourself?** [`docs/TESTING.md`](docs/TESTING.md) is a six-level procedure
+(30 s stack check → 10 min full agentic loop) with the exact commands and the **measured** expected
+outputs, plus a failure→cause table (including the `--user 1000:1000` requirement for Gazebo).
+
 ### Repository layout
 
 ```
@@ -83,6 +87,8 @@ DroneCAD/
 ├── docker-compose.yml       # runtime services (security baseline)
 ├── .github/workflows/ci.yml # scaffold validation (SHA-pinned actions)
 ├── docs/phase-0-hardware.md # probe logs + model decision matrix
+├── docs/TESTING.md          # how to validate the stack yourself (6 levels, measured outputs)
+├── docs/mcp-tools-verified.md # 5/5 MCP servers, tools/list + live calls
 ├── scripts/validate_stack.py
 └── ws/                      # colcon workspace (Phase 2 packages)
 ```
@@ -143,6 +149,11 @@ python scripts/validate_stack.py    # ports en boucle locale, pas de privileged,
 ```
 
 **Note d'enregistrement MCP** — `.mcp.json` est le registre canonique des clients MCP en stdio (Claude Code / Cursor le lisent tel quel) ; l'entrée `rosbags` utilise `${DRONECAD_HOME}` (définir cette variable avec le chemin absolu du dépôt). Kimi Code ne lit pas `.mcp.json` nativement aujourd'hui — l'enregistrement par client est prévu en Phase 3 (voir `REPORT.md`).
+
+**Vous voulez tout valider vous-même ?** [`docs/TESTING.md`](docs/TESTING.md) est une procédure à six
+niveaux (vérification de la pile en 30 s → boucle agentique complète en 10 min) avec les commandes
+exactes et les résultats attendus **mesurés**, plus un tableau symptôme → cause (dont l'exigence
+`--user 1000:1000` pour Gazebo).
 
 ### Arborescence
 

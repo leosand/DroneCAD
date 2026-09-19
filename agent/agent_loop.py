@@ -245,6 +245,18 @@ def _mcp_command(server: str) -> tuple[list[str], dict[str, str]]:
     command = [
         os.path.expandvars(str(part)) for part in [spec["command"], *spec.get("args", [])]
     ]
+    # EN: an undefined ${VAR} stays literal and only fails later as "file not found" — say it now.
+    # FR : une ${VAR} non définie reste littérale et n'échoue que plus tard en « fichier
+    #     introuvable » — autant le dire tout de suite.
+    unresolved = [part for part in command if "${" in part]
+    if unresolved:
+        raise SystemExit(
+            f"Variable d'environnement non définie dans .mcp.json (serveur {server!r}) :\n"
+            + "\n".join(f"  {part}" for part in unresolved)
+            + "\n-> definir la variable puis relancer, ex. Git Bash : "
+            "export DRONECAD_HOME='/e/Mes apps/DroneCAD' | PowerShell : "
+            "$env:DRONECAD_HOME = 'E:\\Mes apps\\DroneCAD'"
+        )
     env = {
         key: os.path.expandvars(str(value))
         for key, value in (spec.get("env") or {}).items()

@@ -21,6 +21,7 @@ import threading
 import time
 from collections import deque
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any, Self
 
 PROTOCOL_VERSION = "2025-06-18"
@@ -65,6 +66,18 @@ class StdioMCPClient:
             resolved = shutil.which(self.command[0])
             if resolved:
                 self.command[0] = resolved
+        # EN: fail loudly with the server name and the full command — a missing binary used to
+        #     surface as a bare FileNotFoundError with no context (2026-09-19, ${DRONECAD_HOME}).
+        # FR : échouer clairement avec le nom du serveur et la commande complète — un binaire
+        #     manquant n'apparaissait que comme un FileNotFoundError sans contexte (2026-09-19).
+        executable = Path(self.command[0])
+        if shutil.which(self.command[0]) is None and not executable.is_file():
+            raise MCPError(
+                f"[{self.name}] exécutable introuvable / executable not found: {self.command[0]!r}\n"
+                f"  commande complète / full command: {self.command}\n"
+                "  variables d'environnement à vérifier / env vars to check: "
+                "DRONECAD_HOME (dépôt / repo), PATH"
+            )
         self._proc = subprocess.Popen(
             self.command,
             stdin=subprocess.PIPE,
