@@ -16,7 +16,16 @@
     "memory": ["remember", "recall", "recall_by_tags", "context_summary"]
   },
   "simulate": {
-    "ros2": [],
+    "ros2": [
+      "ros2_topic_list",
+      "ros2_topic_publish",
+      "ros2_topic_subscribe",
+      "ros2_service_list",
+      "ros2_service_call",
+      "ros2_get_message_fields",
+      "ros2_list_actions",
+      "ros2_send_action_goal"
+    ],
     "blender": [],
     "memory": ["remember", "recall", "recall_by_tags", "context_summary"]
   },

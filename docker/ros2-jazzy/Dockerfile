@@ -38,8 +38,9 @@ FROM base AS mcp
 RUN git clone --depth 1 --branch 2606 https://github.com/wise-vision/ros2_mcp /opt/ros2-mcp \
  && curl -LsSf https://astral.sh/uv/install.sh | sh \
  && cd /opt/ros2-mcp \
+ && rm -f .python-version \
  && UV_PYTHON_DOWNLOADS=never /root/.local/bin/uv venv --python /usr/bin/python3.12 --no-managed-python \
- && UV_PYTHON_DOWNLOADS=never /root/.local/bin/uv sync --no-managed-python \
+ && UV_PYTHON_DOWNLOADS=never /root/.local/bin/uv sync --python /usr/bin/python3.12 --no-managed-python \
  && /opt/ros2-mcp/.venv/bin/python -c "import sys; assert sys.version_info[:2] == (3, 12), sys.version"
 
 # ---------- Stage 3 : runtime (image livrée) ----------
