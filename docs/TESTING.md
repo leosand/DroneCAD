@@ -104,8 +104,10 @@ Mesure de référence (2026-09-19, après rebuild de l'image) : 11 526 messages
 gh run list -R leosand/DroneCAD --limit 3      # attendu / expected: 4 jobs verts
 gh release list -R leosand/DroneCAD            # v0.1.0 / v0.2.0 (pré-releases)
 # Scan d'image local (la CI reste la source de vérité : sa base de vulnérabilités est plus fraîche)
+# Premier lancement : téléchargement de la base + analyse d'une image de 6,3 Go → plusieurs minutes.
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock `
   ghcr.io/aquasecurity/trivy:0.74.0 image --severity HIGH,CRITICAL --ignore-unfixed dronecad/ros2-jazzy:0.1.0
+# attendu / expected: aucun constat HIGH/CRITICAL corrigeable, code de sortie 0 (mesuré le 2026-09-19)
 ```
 
 ## Que faire si ça échoue / When it fails
