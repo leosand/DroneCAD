@@ -120,11 +120,23 @@ jobs:
         #     le runner a manqué d'espace (« no space left on device », run 35416596774). Le cache
         #     buildkit est local seulement — le cache GHA conserve les couches.
         run: |
-          echo "--- avant / before ---" ; df -h / /tmp | tail -2
+          echo "--- avant / before ---" ; df -h / /tmp /mnt 2>/dev/null | tail -3
           docker builder prune -af || true
           docker image prune -f || true
-          echo "--- apres / after ---" ; df -h / /tmp | tail -2
+          # EN: the export of the 6.3 GB image needs ~20 GB uncompressed; /root had 8.6 GB left
+          #     but the runner's work disk (/mnt) is much larger — point Trivy there when possible.
+          # FR : l'export de l'image de 6,3 Go demande ~20 Go décompressés ; / n'avait plus que
+          #     8,6 Go alors que le disque de travail du runner (/mnt) est bien plus grand —
+          #     Trivy y écrit quand c'est possible.
+          if mkdir -p /mnt/trivy-tmp 2>/dev/null && [ -w /mnt/trivy-tmp ] ; then
+            echo "TRIVY_TMP=/mnt/trivy-tmp" >> "$GITHUB_ENV" ; echo "Trivy TMP -> /mnt/trivy-tmp" ;
+          else
+            echo "TRIVY_TMP=/tmp" >> "$GITHUB_ENV" ; echo "Trivy TMP -> /tmp (repli / fallback)" ;
+          fi
+          echo "--- apres / after ---" ; df -h / /tmp /mnt 2>/dev/null | tail -3
       - name: Trivy scan (HIGH/CRITICAL fixables)
+        env:
+          TMPDIR: ${{ env.TRIVY_TMP }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: dronecad/ros2-jazzy:ci
