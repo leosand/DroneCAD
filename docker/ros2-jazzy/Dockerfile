@@ -29,9 +29,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ---------- Stage 2 : mcp (vendoring isolé — outillage hors image finale) ----------
 FROM base AS mcp
 # EN: pinned audited tag 2606 / FR : tag 2606 audité, épinglé
+# EN: sync with the SYSTEM python — uv would otherwise download a managed interpreter into
+#     /root or $HOME, unavailable to the non-root runtime user and incompatible with rclpy
+#     (3.12). The final assertion makes a silent regression fail the build (verified 2026-09-18).
+# FR : synchroniser avec le python SYSTÈME — sinon uv télécharge un interpréteur géré sous
+#     /root ou $HOME, inaccessible au non-root et incompatible avec rclpy (3.12). L'assertion
+#     finale fait échouer le build en cas de régression silencieuse (vérifié le 2026-09-18).
 RUN git clone --depth 1 --branch 2606 https://github.com/wise-vision/ros2_mcp /opt/ros2-mcp \
  && curl -LsSf https://astral.sh/uv/install.sh | sh \
- && /root/.local/bin/uv sync --directory /opt/ros2-mcp
+ && cd /opt/ros2-mcp \
+ && UV_PYTHON_DOWNLOADS=never /root/.local/bin/uv venv --python /usr/bin/python3.12 --no-managed-python \
+ && UV_PYTHON_DOWNLOADS=never /root/.local/bin/uv sync --no-managed-python \
+ && /opt/ros2-mcp/.venv/bin/python -c "import sys; assert sys.version_info[:2] == (3, 12), sys.version"
 
 # ---------- Stage 3 : runtime (image livrée) ----------
 FROM base AS runtime

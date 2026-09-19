@@ -17,7 +17,7 @@
         "dronecad-ros2-jazzy",
         "bash",
         "-lc",
-        "source /opt/ros/jazzy/setup.bash && uv --directory /opt/ros2-mcp run mcp_ros_2_server"
+        "source /opt/ros/jazzy/setup.bash && exec /opt/ros2-mcp/.venv/bin/mcp_ros_2_server"
       ]
     },
     "rosbags": {
