@@ -69,9 +69,34 @@ jobs:
               cd /workspace && colcon build &&
               source install/setup.bash &&
               python3 -m pytest /workspace/src/humanoid_description/test/test_urdf.py -q"
+      - name: Gazebo server smoke (container)
+        # EN: separates "does the simulator start at all?" from "does the robot stand?" — the
+        #     2026-09-19 CI runs showed a silent `gz sim` (no topic list, no log line) while it
+        #     worked on the workstation, so this step captures the server's real output.
+        # FR : sépare « le simulateur démarre-t-il ? » de « le robot tient-il debout ? » — les
+        #     runs CI du 2026-09-19 montraient un `gz sim` muet (aucune liste de topics, aucune
+        #     ligne de journal) alors qu'il fonctionne sur la station, donc cette étape capture
+        #     la sortie réelle du serveur.
+        # EN: GZ_IP + localhost-only discovery — CI runners have several interfaces and no
+        #     routable multicast, which stalls gz-transport/DDS discovery.
+        # FR : GZ_IP + découverte limitée à localhost — les runners CI ont plusieurs interfaces
+        #     et pas de multicast routable, ce qui bloque la découverte gz-transport/DDS.
+        run: |
+          docker run --rm --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
+            -e GZ_IP=127.0.0.1 -e ROS_LOCALHOST_ONLY=1 -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
+            -v "$PWD/ws:/workspace" dronecad/ros2-jazzy:ci bash -lc "
+              source /opt/ros/jazzy/setup.bash &&
+              source /workspace/install/setup.bash &&
+              echo '--- versions ---' && gz sim --versions ;
+              echo '--- interfaces ---' ; hostname -I || true ;
+              (timeout 45 gz sim -r -s /workspace/install/humanoid_gazebo/share/humanoid_gazebo/worlds/flat_ground_headless.sdf -v 4 > /tmp/gz.log 2>&1 &) ;
+              sleep 15 ;
+              echo '--- topics (après 15 s) ---' ; gz topic -l ;
+              echo '--- journal serveur (60 premières lignes) ---' ; head -60 /tmp/gz.log"
       - name: Headless Gazebo standing test (container)
         run: |
           docker run --rm --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
+            -e GZ_IP=127.0.0.1 -e ROS_LOCALHOST_ONLY=1 -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
             -v "$PWD/ws:/workspace" dronecad/ros2-jazzy:ci bash -lc "
               source /opt/ros/jazzy/setup.bash &&
               source /workspace/install/setup.bash &&
