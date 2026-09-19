@@ -112,6 +112,18 @@ jobs:
               source /opt/ros/jazzy/setup.bash &&
               source /workspace/install/setup.bash &&
               cd /workspace && python3 -m pytest src/humanoid_gazebo/test/test_stand.py -q -s -o cache_dir=/tmp/.pytest_cache"
+      - name: Free disk space before Trivy / libérer l'espace avant Trivy
+        # EN: the shipped image is 6.3 GB; Trivy exports it to /tmp to analyse the layers and
+        #     the runner ran out of space (`no space left on device`, run 35416596774). The
+        #     buildkit cache is only local — the GHA cache still holds the layers.
+        # FR : l'image livrée fait 6,3 Go ; Trivy l'exporte dans /tmp pour analyser les couches et
+        #     le runner a manqué d'espace (« no space left on device », run 35416596774). Le cache
+        #     buildkit est local seulement — le cache GHA conserve les couches.
+        run: |
+          echo "--- avant / before ---" ; df -h / /tmp | tail -2
+          docker builder prune -af || true
+          docker image prune -f || true
+          echo "--- apres / after ---" ; df -h / /tmp | tail -2
       - name: Trivy scan (HIGH/CRITICAL fixables)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:

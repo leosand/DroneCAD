@@ -46,16 +46,28 @@
   - `secret-scan` : gitleaks v3 (compensation GHAS).
 - **Image Trivy-clean** (scan local, ghcr.io/aquasecurity/trivy:0.74.0) : **0 vulnérabilité HIGH/CRITICAL corrigeable** après les bumps ciblés (OS + paquets ROS déjà propres ; 3 paquets Python du venv vendoré corrigés).
 
-### Premier run CI `35412876213` — deux échecs réels, diagnostiqués et corrigés (`3e7635f`)
+### Porte qualité CI — cinq runs, quatre défauts réels corrigés (`3e7635f` → `0503a21`)
 
-Le premier passage en CI n'était **pas** vert : `validate` ✅, `secret-scan` ✅, `lint` ❌, `container-tests` ❌. Les deux causes sont réelles (pas des aléas de runner) et corrigées :
+La CI n'a **pas** été verte du premier coup. Chaque échec a été instrumenté, diagnostiqué, corrigé puis re-vérifié — jamais contourné ni maquillé.
 
-| Job | Symptôme | Cause racine | Correctif |
-|---|---|---|---|
-| `lint` | `EXE001` ×4 (« shebang sans bit exécutable ») | dépôt cloné/initialisé sous Windows : `core.filemode=false`, les 4 scripts à shebang étaient en `100644` | `git update-index --chmod=+x` sur les 4 scripts (index Git = `100755`) |
-| `container-tests` | `AssertionError: le robot n'est jamais apparu / robot never spawned` (90 s d'attente) | le launch spawne à **T+2 s en dur** ; `ros_gz_sim create` n'a aucune option d'attente → sur un runner lent (4 vCPU) la minuterie tirait avant la fin du chargement du monde et le spawn était **perdu** | `spawn_ready.py` (nouveau) attend `/world/<monde>/create` **et** un éditeur sur `/robot_description`, puis spawne avec 3 réessais ; `--shm-size=1g` ; spawners de contrôleurs 180 s |
+| # | Run(s) | Symptôme | Cause racine | Correctif |
+|---|---|---|---|---|
+| 1 | `35412876213` | `lint` : `EXE001` ×4 | dépôt initialisé sous Windows (`core.filemode=false`) → shebangs en `100644` | `git update-index --chmod=+x` sur les 4 scripts |
+| 2 | `35412876213` | « le robot n'est jamais apparu » (90 s) | spawn sur **minuterie fixe de 2 s** ; `ros_gz_sim create` n'attend rien → spawn perdu sur un runner lent | `spawn_ready.py` (attend `/world/<monde>/create` **et** l'éditeur du topic), `--shm-size=1g`, contrôleurs 180 s |
+| 3 | `35413419667` | même échec, 180 s | sortie du launch dans `DEVNULL` → **échec indiagnosticable** | journal du launch sur disque + `_diagnostics()` (journaux Gazebo, topics, processus, `/dev/shm`) |
+| 4 | `35413853829` | `gz topic -l` **et** `ros2 node list` vides | le monde chargeait `gz-sim-sensors-system` (moteur OGRE2) | monde **`flat_ground_headless.sdf`** + étape de fumée dédiée |
+| 5 | `35414244557` → `35416093199` | serveur pleinement initialisé (`World [flat_ground_headless] initialized`) mais **aucun** topic à 20/45/90/150 s, à ~26 % CPU | `--user "$(id -u):$(id -g)"` = **uid 1001 du runner, absent de `/etc/passwd`** → gz-transport ne se découvre plus | uid **1000** (`ubuntu` de l'image) pour les étapes Gazebo, espace de travail en lecture seule, cache pytest en `/tmp` |
 
-Le diagnostic a lui-même dû être outillé : la sortie du launch partait dans `DEVNULL`, rendant l'échec indiagnosticable. Le test conserve désormais le journal du launch sur disque et déverse à l'échec le journal Gazebo, les topics, les processus et `/dev/shm` (`_diagnostics()`). Reproduction locale sous contraintes du runner (`--cpus=4 --shm-size=64m`) : **serveur prêt après 2,2 s, spawn OK (essai 1/3), debout z = 1,065 m, 1 passed en 36,7 s**.
+Le test décisif (reproduit sur la station, avec l'image livrée) :
+
+```text
+docker run --user 1000:1000 … → gz topic -l : /clock  /gazebo/resource_paths  /stats  …
+docker run --user 1001:1001 … → gz topic -l : (vide)
+```
+
+Pistes explorées puis **écartées par la mesure** (elles n'étaient pas la cause) : `--network host`, `GZ_IP=127.0.0.1`, `ROS_LOCALHOST_ONLY`/`ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`, profil Fast DDS sans multicast (écrit, validé contre `fastRTPS_profiles.xsd`, puis supprimé faute d'utilité), `shm-size` porté à 1 Gio, attentes allongées. Les flags multicast des interfaces sont d'ailleurs **identiques** en local et en CI (`lo: 0x9`, `eth0: 0x1003`).
+
+Ce que la CI protège désormais (job `container-tests`) : build de l'image livrée → `colcon build` + tests URDF → **fumée du serveur Gazebo** (« `/clock` annoncé ») → **test debout dans l'image** (10 s simulées, base z = 1,065 m) → **Trivy** HIGH/CRITICAL corrigeables. Vérification locale de la configuration exacte du job (uid 1000, `ws` en lecture seule) : **1 passed en 41,9 s**.
 
 ## Phase 5 — Liste de contrôle du brief (auto-vérification)
 
@@ -77,6 +89,7 @@ Le diagnostic a lui-même dû être outillé : la sortie du launch partait dans 
 14. **`mcp-rosbags` stale** → wrapper de compat (`scripts/rosbags_mcp_server.py`) + venv `mcp<2` ; **décision de fork encadrée par ADR-0008** (critères explicites).
 15. **CI Gazebo sans `xvfb`** : le brief mentionne `xvfb` pour l'intégration headless ; le launch démarre `gz sim -s` (serveur seul) avec rendu logiciel mesa, **vérifié fonctionnel sans serveur X** (le conteneur n'a aucun `/dev/dri`, ni localement ni sur le runner). `xvfb` n'a donc pas été ajouté à l'image (surface réduite) ; il redeviendrait nécessaire pour une GUI `gz sim -g` ou un rendu OGRE en CI — piste tracée, non requise.
 16. **Course du spawn (CI `35412876213`)** : le robot n'apparaissait jamais sur un runner lent à cause d'une minuterie fixe de 2 s ; corrigé par une attente active du service `/world/<monde>/create` (`spawn_ready.py`). Le défaut était latent en local (machine rapide) et n'a été révélé que par la CI — précisément ce que la porte qualité doit attraper.
+17. **Contrainte d'environnement CI — uid sans entrée `/etc/passwd`** : avec `--user 1001:1001` (l'uid du runner, absent de `/etc/passwd` de l'image), **gz-transport ne se découvre plus du tout** : le serveur Gazebo démarre, charge le monde jusqu'à « World [...] initialized », tourne à ~26 % CPU, et n'annonce aucun topic — d'où cinq runs en échec. Le job exécute donc les étapes Gazebo en **uid 1000** (`ubuntu` de l'image, présent dans `/etc/passwd`), espace de travail monté en lecture seule ; l'étape `colcon` garde l'uid du runner car elle écrit dans l'arborescence. Reproduit et corrigé sur la station (uid 1000 → topics listés ; uid 1001 → muet), puis vérifié avec la configuration exacte du job.
 11. **RTF** : **caméra headless désormais opérationnelle** (rendu logiciel mesa) ; RTF mesure **0,60** avec caméra+IMU (0,50 sans) vs cible 1/1 — limite CPU (Xeon 4 cœurs) ; pistes : pas physique adaptatif, tâches dédiées, GPU passthrough/WSLg (phase future).
 
 ## Validations exécutées (preuves)
