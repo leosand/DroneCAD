@@ -1,0 +1,3 @@
+[submodule "vendor/mcp-rosbags"]
+	path = vendor/mcp-rosbags
+	url = https://github.com/binabik-ai/mcp-rosbags
