@@ -8,6 +8,9 @@ Les releases sont *delivery-gated* et **full-auto** : gérées par `.harness/scr
 
 ### Added
 
+- **Mémoire cognitive locale opérationnelle, sans clé tierce** — `SHODH_API_KEYS` n'est pas un abonnement : c'est la clé que vous choisissez pour **votre propre** serveur `varunshodh/shodh-memory`. `.env.example` documente sa génération (`python -c "import secrets; print(secrets.token_hex(24))"`), `docker-compose.yml` l'injecte dans le service (`${SHODH_API_KEYS:-}` — vide = mode DEVELOPMENT, appels MCP en `503`), et `.mcp.json` l'expanse côté client sous le nom singulier `SHODH_API_KEY` (aucune clé en dur, garde-fou `validate_stack.py` satisfait). Appels réels vérifiés le 2026-09-19 : `memory_stats` (🐘 serveur v0.2.0), `remember`, puis `recall` à **95 % de pertinence** avec ID persistant.
+- `docs/USAGE.md` — mode d'emploi : brancher un client MCP, piloter la simulation, faire tourner la boucle agentique, interroger la mémoire.
+
 - **Phase 4 (CI)** — jobs `lint` (ruff sur `agent/`, `scripts/`, `ws/src/`), `container-tests` (buildx + cache GHA → colcon + tests URDF + **test debout headless dans l'image livrée** + **scan Trivy** HIGH/CRITICAL corrigeables) ; concurrence annulée par réf ; actions épinglées par SHA (dont `aquasecurity/trivy-action` v0.36.0).
 - **Caméra headless vérifiée** : `enable_camera:=true` publie `/camera`, `/camera/image`, `/camera/depth_image`, `/camera/points` (rendu logiciel mesa, zéro erreur) ; **RTF caméra+IMU mesuré à 0,60** (vs 0,50 sans caméra — limite CPU documentée, écart 11).
 - ADR-0008 : décision `mcp-rosbags` (wrapper de compatibilité, critères de fork explicites).

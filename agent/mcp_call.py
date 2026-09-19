@@ -50,6 +50,12 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         client.stop()
 
+    # EN: Windows consoles default to cp1252 and crash on non-ASCII tool results (shodh-memory
+    #     returns an emoji in its stats) — force UTF-8 on the way out.
+    # FR : les consoles Windows sont en cp1252 et plantent sur les résultats non ASCII
+    #     (shodh-memory renvoie un emoji dans ses statistiques) — forcer l'UTF-8 en sortie.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
     print(json.dumps(result, ensure_ascii=False)[:MAX_PRINT_CHARS])
     return 0
 

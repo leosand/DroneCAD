@@ -26,7 +26,12 @@
     },
     "memory": {
       "command": "npx",
-      "args": ["-y", "@shodh/memory-mcp"]
+      "args": ["-y", "@shodh/memory-mcp"],
+      "env": {
+        "SHODH_API_URL": "http://127.0.0.1:3030",
+        "SHODH_API_KEY": "${SHODH_API_KEYS}",
+        "SHODH_NO_AUTO_SPAWN": "true"
+      }
     }
   }
 }

@@ -63,9 +63,15 @@ flowchart LR
 
 ```bash
 git clone https://github.com/leosand/DroneCAD.git && cd DroneCAD
+cp .env.example .env                # memory key template / gabarit de clé mémoire
+python -c "import secrets; print(secrets.token_hex(24))"   # generate YOUR key / générer VOTRE clé
 docker compose config -q            # validate compose
 python scripts/validate_stack.py    # loopback-only ports, no privileged, no secrets, MCP registry
+docker compose up -d                # ROS 2 + Gazebo + MoveIt 2 container, local cognitive memory
 ```
+
+Daily usage (MCP clients, driving the simulation, the agentic loop, the memory) is in
+[`docs/USAGE.md`](docs/USAGE.md); the full validation procedure is in [`docs/TESTING.md`](docs/TESTING.md).
 
 **MCP registration note** — `.mcp.json` is the canonical registry for stdio MCP clients (Claude Code / Cursor read it as-is); the `rosbags` entry uses `${DRONECAD_HOME}` (set it to this repository's absolute path). Kimi Code does not read `.mcp.json` natively today — per-client registration is a Phase 3 item (see `REPORT.md`).
 
@@ -84,9 +90,11 @@ DroneCAD/
 ├── CHANGELOG.md             # Keep a Changelog · releases full-auto via parent harness
 ├── AGENTS.md                # instructions for AI agents working here
 ├── .mcp.json                # MCP server registry (localhost only)
+├── .env.example             # local env template — copy to .env (memory key, git-ignored)
 ├── docker-compose.yml       # runtime services (security baseline)
 ├── .github/workflows/ci.yml # scaffold validation (SHA-pinned actions)
 ├── docs/phase-0-hardware.md # probe logs + model decision matrix
+├── docs/USAGE.md            # day-to-day usage: MCP clients, simulation, loop, memory
 ├── docs/TESTING.md          # how to validate the stack yourself (6 levels, measured outputs)
 ├── docs/mcp-tools-verified.md # 5/5 MCP servers, tools/list + live calls
 ├── scripts/validate_stack.py
@@ -114,7 +122,7 @@ DroneCAD/
 
 - Containers: non-root users, **no** `privileged: true`, no host networking; published ports bound to `127.0.0.1` only.
 - Repo: GitHub secret scanning + push protection enabled at creation; CI-pinned actions by SHA; `scripts/validate_stack.py` gates ports/secrets/privileged in CI.
-- No secrets in repo — `.env*`, keys and credentials are git-ignored and refused by convention.
+- No secrets in repo — `.env*`, keys and credentials are git-ignored and refused by convention. The cognitive-memory key is **yours**: it lives in `.env`, is injected into the container by the compose file and expanded client-side as `${SHODH_API_KEYS}` — never committed (`.env.example` shows how to generate it).
 
 ---
 
@@ -144,9 +152,15 @@ DroneCAD/
 
 ```bash
 git clone https://github.com/leosand/DroneCAD.git && cd DroneCAD
+cp .env.example .env                # gabarit de clé mémoire / memory key template
+python -c "import secrets; print(secrets.token_hex(24))"   # générer VOTRE clé / generate YOUR key
 docker compose config -q            # valider le compose
 python scripts/validate_stack.py    # ports en boucle locale, pas de privileged, pas de secrets, registre MCP
+docker compose up -d                # conteneur ROS 2 + Gazebo + MoveIt 2, mémoire cognitive locale
 ```
+
+L'usage quotidien (clients MCP, pilotage de la simulation, boucle agentique, mémoire) est dans
+[`docs/USAGE.md`](docs/USAGE.md) ; la procédure de validation complète est dans [`docs/TESTING.md`](docs/TESTING.md).
 
 **Note d'enregistrement MCP** — `.mcp.json` est le registre canonique des clients MCP en stdio (Claude Code / Cursor le lisent tel quel) ; l'entrée `rosbags` utilise `${DRONECAD_HOME}` (définir cette variable avec le chemin absolu du dépôt). Kimi Code ne lit pas `.mcp.json` nativement aujourd'hui — l'enregistrement par client est prévu en Phase 3 (voir `REPORT.md`).
 
@@ -167,7 +181,7 @@ Voir le tableau de la section anglaise (audit du 2026-09-18, verdicts adopt/fork
 
 - Conteneurs : utilisateurs non-root, **aucun** `privileged: true`, pas de mise en réseau de l'hôte ; les ports publiés sont liés à `127.0.0.1` uniquement.
 - Dépôt : analyse de secrets GitHub + protection contre l'envoi activées à la création ; actions CI épinglées par empreinte SHA ; `scripts/validate_stack.py` verrouille ports/secrets/privileged en CI.
-- Aucun secret dans le dépôt — les `.env*`, clés et identifiants sont exclus par `.gitignore` et par convention.
+- Aucun secret dans le dépôt — les `.env*`, clés et identifiants sont exclus par `.gitignore` et par convention. La clé de mémoire cognitive est **la vôtre** : elle vit dans `.env`, est injectée dans le conteneur par le compose et expansée côté client sous `${SHODH_API_KEYS}` — jamais versionnée (`.env.example` montre comment la générer).
 
 ### Remarque importante (écarts au brief fondateur)
 

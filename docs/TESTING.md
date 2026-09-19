@@ -17,6 +17,9 @@
 # FR : le registre MCP utilise ${DRONECAD_HOME} pour le serveur rosbags vendoré — sans elle,
 #     l'outil échoue désormais avec un message explicite plutôt qu'un « fichier introuvable » nu.
 $env:DRONECAD_HOME = "E:\Mes apps\DroneCAD"
+# EN: cognitive-memory key — YOUR key for YOUR local server (cp .env.example .env, first time only)
+# FR : clé de la mémoire cognitive — la VÔTRE, pour votre serveur local (cp .env.example .env, une fois)
+$env:SHODH_API_KEYS = (Get-Content .env | Select-String '^SHODH_API_KEYS=').Line.Split('=')[1]
 cd $env:DRONECAD_HOME
 
 docker info --format '{{.ServerVersion}}'          # Docker Desktop démarré / running
@@ -76,12 +79,16 @@ Attendu / expected :
 python agent\mcp_call.py blender get_scene_info       # scène vivante / live scene (3 objets)
 python agent\mcp_call.py freecad get_freecad_version  # FreeCAD 1.1.3, gui_available: 1
 python agent\mcp_call.py ros2 ros2_topic_list         # graphe ROS 2 du conteneur / container graph
-python agent\mcp_call.py memory memory_stats          # ⚠️ requiert SHODH_API_KEYS
+python agent\mcp_call.py rosbags set_bag_path '{"path": "E:/Mes apps/DroneCAD/artifacts/e2e_bag"}'
+python agent\mcp_call.py memory memory_stats          # mémoire locale / local memory (🐘 v0.2.0)
 ```
 
 `tools/list` est le contrôle minimal pour chacun : `31 / 83 / 20 / 15 / 38` outils
 (`docs/mcp-tools-verified.md`). Le serveur `rosbags` passe par le venv vendoré et le wrapper de
-compatibilité (bags Jazzy v9).
+compatibilité (bags Jazzy v9). La mémoire est **locale** et protégée par **votre** clé : la
+générer dans `.env` (`python -c "import secrets; print(secrets.token_hex(24))"`, voir
+`.env.example`), puis `docker compose up -d --force-recreate shodh-memory`. Cycle vérifié :
+`remember` puis `recall` → **95 % de pertinence**, identifiant persistant.
 
 ## 5. 5-10 min — la boucle agentique complète / the full agentic loop
 
@@ -118,7 +125,7 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock `
 | `le robot n'est jamais apparu` | conteneur lancé avec un uid absent de `/etc/passwd` | `--user 1000:1000` |
 | `gz topic -l` vide dans le conteneur | même cause | idem |
 | FreeCAD/Blender : timeout MCP | GUI fermée ou addon non chargé | rouvrir la GUI, vérifier `:9875`/`:9876` |
-| `memory` : `503 AUTH_NOT_CONFIGURED` | clé absente | définir `SHODH_API_KEYS` |
+| `memory` : `503 AUTH_NOT_CONFIGURED` | clé vide ou désynchronisée | générer **votre** clé dans `.env` (voir `.env.example`), recréer le service, exporter la variable |
 | CI rouge à l'étape Trivy | lire le message : `no space left on device` ≠ vulnérabilité | voir `REPORT.md` § *Porte qualité CI* |
 | Test debout lent (> 2 min) | CPU partagé, RTF < 1 | normal : le test compte le **temps simulé**, pas le temps mural |
 

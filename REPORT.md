@@ -88,7 +88,7 @@ Le test debout tourne donc désormais **en CI, dans l'image livrée**, et la por
 |---|---|---|---|
 | 1 | Modèle local chargé, résident GPU, tok/s rapportés, alternatives documentées | ✅ | 115,44 tok/s, 100 % GPU ctx 8192, ADR-0002/0007 |
 | 2 | `docker compose config` valide ; tous conteneurs non-root démarrés | ✅ | config OK ; 2 services Up ; `id -u` = 1000 ; démarrage 3 s |
-| 3 | `.mcp.json` : chaque serveur répond à un appel `tools/list` réel | ✅ | **5/5** (31/83/20/15/38) + appels réels (scène Blender, FreeCAD 1.1.3, topics ROS 2, bag v9) |
+| 3 | `.mcp.json` : chaque serveur répond à un appel `tools/list` réel | ✅ | **5/5** (31/83/20/15/38) + appels réels : scène Blender, FreeCAD 1.1.3, topics ROS 2, sac v9 (11 526 msgs), **mémoire locale** (`remember` → `recall` 95 %) |
 | 4 | Robot humanoïde debout ≥ 10 s dans Gazebo (log `joint_states`) | ✅ | z=1,065 m ; 1,056 m après squat (E2E) |
 | 5 | Boucle agentique complète (STEP, BLEND, URDF, ROS bag, diagnostic) | ✅ | **E2E_OK** itération 1/3 — STEP+STL, BLEND+GLB, bag 17 656 msgs, diagnostic effort |
 | 6 | CI verte sur la branche `feature/initial-stack` | ✅ | **run `35418441478` : 4/4 jobs verts** ; `feature/initial-stack` alignée sur ce commit (fast-forward) ; cinq runs rouges d'abord, chaque cause corrigée puis re-vérifiée |
@@ -124,7 +124,8 @@ releases: v0.1.0 · v0.2.0 (vérifiées) · [Unreleased] prêt pour la prochaine
 
 ## En attente / prochaines actions (aucun TODO silencieux)
 
-- **Utilisateur** : `SHODH_API_KEYS` (appels memory) ; enregistrement Kimi Code des serveurs MCP.
+- **Réglé le 2026-09-19** : la mémoire cognitive fonctionne **sans clé tierce** — `SHODH_API_KEYS` est une clé que l'on génère pour son propre serveur local (`varunshodh/shodh-memory`), documentée dans `.env.example`, injectée par le compose, expansée par `.mcp.json` (jamais versionnée). Appels réels vérifiés : `memory_stats`, `remember`, `recall` (95 %).
+- **Utilisateur** : enregistrement des serveurs MCP dans Kimi Code (il ne lit pas `.mcp.json` nativement) — les 5 entrées sont à recopier depuis `.mcp.json`.
 - **Améliorations futures (hors périmètre livré)** : RTF 1/1 (GPU passthrough/WSLg, pas physique adaptatif) ; MuJoCo pour le RL locomotion (ADR-0003) ; localisation/vitesse du workspace Gazebo (`gazebo_ros_pkgs`) si navigation ; fork formel `mcp-rosbags` selon ADR-0008.
 - **Vault** : fiche à jour ; sessions promues ; connaissance gpt-oss en brouillon (promotion après relecture).
 
@@ -139,3 +140,4 @@ releases: v0.1.0 · v0.2.0 (vérifiées) · [Unreleased] prêt pour la prochaine
 | ~21:30 | **Phase 4** : CI lint/container-tests/Trivy ; caméra headless + RTF 0,60 ; bumps sécurité ; **Trivy local propre** ; ADR-0008 |
 | ~22:00–23:20 | **CI verte** (run `35418441478`) après cinq runs rouges : `EXE001` (chmod Windows), course du spawn → `spawn_ready.py`, monde OGRE2 → `flat_ground_headless.sdf`, **uid 1001 sans entrée passwd → gz-transport muet**, CVE CRITICAL `anyio` corrigée ; instrumentation du test et étape de fumée ajoutées |
 | ~23:30–00:10 | Conteneur recréé sur l'image à jour (anyio 4.15.1, uid 1000) ; **boucle E2E re-mesurée `E2E_OK`** (11 526 msgs, z = 1,0558 m, effort 0,0554 Nm) ; garde-fou `${VAR}` non définie dans le client MCP ; `docs/TESTING.md` (procédure de test) |
+| ~01:45–02:05 | **Mémoire cognitive rendue opérationnelle sans clé tierce** : `.env` (ignoré) + `.env.example`, `SHODH_API_KEYS` injectée par le compose, `.mcp.json` expansé côté client ; appels réels `memory_stats` / `remember` / `recall` (95 %) ; `agent/mcp_call.py` en UTF-8 (consoles cp1252) ; `docs/USAGE.md` (mode d'emploi) |

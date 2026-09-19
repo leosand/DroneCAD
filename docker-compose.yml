@@ -43,6 +43,19 @@ services:
     image: varunshodh/shodh-memory
     container_name: dronecad-shodh-memory
     user: "1000:1000"              # EN: non-root (uid to confirm Phase 1) / FR : non-root (uid à confirmer Phase 1)
+    environment:
+      # EN: keys YOU choose for your own local server (comma-separated list) — not a third-party
+      #     subscription. Empty → the server logs "DEVELOPMENT mode … will reject all
+      #     authenticated requests" and the MCP tools return 503 AUTH_NOT_CONFIGURED.
+      #     Set it in .env (git-ignored, see .env.example) and keep the two sides in sync:
+      #     SHODH_API_KEYS (server, plural) ↔ SHODH_API_KEY (MCP client, singular).
+      # FR : clés que VOUS choisissez pour votre propre serveur local (liste séparée par des
+      #     virgules) — aucun abonnement tiers. Vide → le serveur journalise « DEVELOPMENT mode …
+      #     will reject all authenticated requests » et les outils MCP répondent 503
+      #     AUTH_NOT_CONFIGURED. La définir dans .env (ignoré par git, voir .env.example) et
+      #     garder les deux côtés synchronisés : SHODH_API_KEYS (serveur, pluriel) ↔
+      #     SHODH_API_KEY (client MCP, singulier).
+      SHODH_API_KEYS: ${SHODH_API_KEYS:-}
     ports:
       - "127.0.0.1:3030:3030"      # EN: loopback only / FR : boucle locale uniquement
     volumes:

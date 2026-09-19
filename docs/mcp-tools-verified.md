@@ -13,7 +13,7 @@
 | `freecad` — `uvx --from freecad-robust-mcp --with 'mcp<2' freecad-mcp` (mode xmlrpc, FreeCAD 1.1.3, bridge auto-démarré `AutoStart`, XML-RPC 9875, socket 9877) | ✅ | **83** | `create_document`, `create_sketch`, `add_sketch_rectangle`, `pad_sketch`, `export_step`, `get_screenshot`, `list_documents`, … |
 | `ros2` — `docker exec dronecad-ros2-jazzy … /opt/ros2-mcp/.venv/bin/mcp_ros_2_server` (tag `2606`, venv python 3.12) | ✅ | **20** | `ros2_topic_list`, `ros2_topic_publish`, `ros2_service_call`, `ros2_send_action_goal`, `ros2_stream_*`, … |
 | `rosbags` — `vendor/mcp-rosbags/.venv/Scripts/python.exe scripts/rosbags_mcp_server.py` (sous-module épinglé + **wrapper de compat** : rosbags moderne pour les bags Jazzy v9, shim `deserialize_cdr`/`serialize_cdr`, `mcp<2`) | ✅ vérifié | **15** | `set_bag_path`, `bag_info`, `get_messages_in_range`, `analyze_trajectory`, `plot_timeseries`, `get_tf_tree`, … — **lecture réelle d'un bag mcap v9** (17 656 messages) |
-| `memory` — `npx -y @shodh/memory-mcp` v0.2.0 | ✅ | **38** | `remember`, `recall`, `recall_by_tags`, `context_summary`, todos/projets, `backup_*`, … |
+| `memory` — `npx -y @shodh/memory-mcp` v0.2.0 + `SHODH_API_URL=http://127.0.0.1:3030`, `SHODH_API_KEY=${SHODH_API_KEYS}` (clé **locale choisie par l'utilisateur**, service `dronecad-shodh-memory`, volume `shodh-data`) | ✅ | **38** | `remember`, `recall`, `recall_by_tags`, `context_summary`, todos/projets, `backup_*`, … |
 
 ## Appels d'outils réels (chaîne complète prouvée)
 
@@ -22,8 +22,8 @@
 | `blender get_scene_info` | ✅ **scène vivante** : protocole v7, addon v1.7 `up_to_date`, 3 objets (`Cube`, `Light`, `Camera`), 2 matériaux — lu depuis la Blender GUI ouverte (socket 9876) |
 | `freecad get_freecad_version` | ✅ **instance vivante** : FreeCAD **1.1.3**, build 20260725, `gui_available: 1` (XML-RPC 9875) |
 | `ros2 ros2_topic_list` | ✅ **graphe ROS 2 vivant** dans le conteneur (`/parameter_events`, types réels) |
-| `memory memory_stats` | ⚠️ requiert `SHODH_API_KEYS` (le service répond `503 AUTH_NOT_CONFIGURED` sans clé) — `tools/list` ✅, appels à configurer par l'utilisateur |
-| `rosbags` appels | `tools/list` ✅ ; appels de bout en bout pendant la boucle (nécessitent un sac `.db3`/`.mcap`—Phase 3 suite) |
+| `memory memory_stats` · `remember` · `recall` | ✅ **mémoire locale opérationnelle** — clé générée dans `.env` (aucun abonnement tiers) : `memory_stats` → « 🐘 Memory Statistics v0.2.0 » ; cycle `remember` → `recall` vérifié le 2026-09-19 (**95 % de pertinence**, identifiant persistant) |
+| `rosbags` appels | ✅ appels directs vérifiés : `set_bag_path {"path": …}` → `success: true`, `mcap_files: 1`, puis `bag_info {"bag_path": …}` sur le sac réel de la boucle E2E (**11 526 messages**, `/clock` 8 882, `/imu` 1 766, `/joint_states` 878) |
 
 ## Notes d'intégration (rencontrées et documentées)
 
