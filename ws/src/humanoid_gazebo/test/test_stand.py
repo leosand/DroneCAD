@@ -59,7 +59,7 @@ def _sample_pose(timeout_s: float = 6.0) -> tuple[float, float, float] | None:
     return z, roll, pitch
 
 
-def _sim_seconds(timeout_s: float = 15.0) -> float | None:
+def _sim_seconds(timeout_s: float = 30.0) -> float | None:
     """Temps simulé courant via /clock / current simulated time via /clock."""
     try:
         out = subprocess.run(
@@ -78,20 +78,60 @@ def _sim_seconds(timeout_s: float = 15.0) -> float | None:
     return int(sec.group(1)) + (int(nsec.group(1)) / 1e9 if nsec else 0.0)
 
 
+def _diagnostics() -> str:
+    """Assemble un diagnostic exploitable en cas d'échec / actionable failure diagnostics.
+
+    EN: the launch output used to go to DEVNULL, which made the first CI failure
+        undiagnosable (2026-09-19). Now the launch log plus live Gazebo/ROS state are dumped.
+    FR : la sortie du launch allait dans DEVNULL, ce qui a rendu le premier échec CI
+        indiagnosticable (2026-09-19). Désormais le journal du launch et l'état Gazebo/ROS
+        en direct sont déversés.
+    """
+    log_path = os.environ.get("DRONECAD_LAUNCH_LOG", "/tmp/dronecad_launch.log")
+    parts: list[str] = []
+    try:
+        with open(log_path, encoding="utf-8", errors="replace") as fh:
+            parts.append(f"--- {log_path} (40 dernières lignes / last 40 lines) ---")
+            parts.append("".join(fh.readlines()[-40:]))
+    except OSError as exc:
+        parts.append(f"--- {log_path} illisible / unreadable: {exc} ---")
+    for label, cmd in (
+        ("gz topics", ["gz", "topic", "-l"]),
+        ("gz processes", ["pgrep", "-a", "gz"]),
+        ("ros2 nodes", ["ros2", "node", "list"]),
+        ("/dev/shm", ["df", "-h", "/dev/shm"]),
+    ):
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15, check=False)
+            out = (proc.stdout or "").strip() or (proc.stderr or "").strip()
+            parts.append(f"--- {label} ---\n{out}")
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            parts.append(f"--- {label} indisponible / unavailable: {exc} ---")
+    return "\n".join(parts)
+
+
 def test_robot_stands_10_simulated_seconds() -> None:
+    log_path = os.environ.get("DRONECAD_LAUNCH_LOG", "/tmp/dronecad_launch.log")
+    # EN: keep the launch output on disk — it is the only evidence when the spawn fails
+    # FR : conserver la sortie du launch sur disque — seule preuve si le spawn échoue
+    log_file = open(log_path, "w", encoding="utf-8")  # noqa: SIM115 (fermé dans finally)
     launch = subprocess.Popen(
         [
             "ros2", "launch", "humanoid_gazebo", "sim.launch.py",
             "enable_camera:=false", "world_file:=flat_ground.sdf",
         ],
-        stdout=subprocess.DEVNULL,
+        stdout=log_file,
         stderr=subprocess.STDOUT,
         start_new_session=True,
     )
     try:
         # EN: wait until the robot is spawned (pose available, z plausible)
         # FR : attendre que le robot soit apparu (pose disponible, z plausible)
-        deadline = time.time() + 90.0
+        # EN: generous budget — the spawn now waits for Gazebo instead of racing a fixed timer
+        #     (slow CI runners take >2 s to load the world; run 35412876213).
+        # FR : budget généreux — le spawn attend désormais Gazebo au lieu de courir contre une
+        #     minuterie fixe (un runner CI lent met >2 s à charger le monde ; run 35412876213).
+        deadline = time.time() + 180.0
         first: tuple[float, float, float] | None = None
         while time.time() < deadline:
             sample = _sample_pose()
@@ -99,13 +139,15 @@ def test_robot_stands_10_simulated_seconds() -> None:
                 first = sample
                 break
             time.sleep(2.0)
-        assert first is not None, "le robot n'est jamais apparu / robot never spawned"
+        assert first is not None, (
+            "le robot n'est jamais apparu / robot never spawned\n" + _diagnostics()
+        )
 
         # EN: wait for ≥ 10 simulated seconds (not wall-clock: RTF may be < 1)
         # FR : attendre ≥ 10 s simulées (pas l'horloge murale : la RTF peut être < 1)
         t_start = _sim_seconds()
         assert t_start is not None, "pas de /clock — simulation non démarrée / no /clock"
-        hard_deadline = time.time() + 180.0
+        hard_deadline = time.time() + 300.0
         while time.time() < hard_deadline:
             now = _sim_seconds()
             if now is not None and (now - t_start) >= REQUIRED_SIM_SECONDS:
@@ -134,3 +176,4 @@ def test_robot_stands_10_simulated_seconds() -> None:
                 os.killpg(os.getpgid(launch.pid), signal.SIGKILL)
             except ProcessLookupError:
                 pass
+        log_file.close()

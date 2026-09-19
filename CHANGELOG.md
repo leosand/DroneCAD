@@ -17,6 +17,7 @@ Les releases sont *delivery-gated* et **full-auto** : gérées par `.harness/scr
 
 ### Fixed
 
+- **CI Phase 4 — premier run `35412876213` en échec, corrigé** : (1) job `lint` → `EXE001` (shebang sans bit exécutable — artefact d'un dépôt cloné sous Windows, `core.filemode=false`) → bit exécutable posé dans l'index Git sur les 4 scripts ; (2) job `container-tests` → le spawn du robot reposait sur une minuterie fixe de 2 s et était **perdu** sur un runner lent (robot jamais apparu en 90 s) → nouveau `spawn_ready.py` qui attend `/world/<monde>/create` **et** un éditeur sur `/robot_description` avant de spawner (3 réessais), `--shm-size=1g` sur les conteneurs du job, timeouts élargis (serveur 180 s, spawners de contrôleurs 180 s, test 600 s), **journal du launch conservé sur disque + diagnostic automatique à l'échec** (journal Gazebo, topics, processus, `/dev/shm`).
 - **Sécurité image** : bumps ciblés dans le venv vendoré (`pillow>=12.3.0`, `cryptography>=50.0.0`, `python-multipart>=0.0.30`) — constats Trivy HIGH/CRITICAL corrigeables précédents sur l'image (OS et paquets ROS déjà propres).
 - Lint : 20+ constats ruff corrigés (agent, scripts, tests ROS 2) ; `preexec_fn=os.setsid` → `start_new_session=True` dans le test debout.
 - Outils haut niveau `freecad-robust-mcp` buggés sur FreeCAD 1.1.3 (`add_sketch_rectangle`, `pad_sketch`, `get_screenshot`, `save_document`, `export_stl` → tracebacks internes vérifiés) : la conception passe par `execute_python` + API Part, les appels d'évidence sont tolérants (décision rapportée dans `REPORT.md`).

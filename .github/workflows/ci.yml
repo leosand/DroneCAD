@@ -63,7 +63,7 @@ jobs:
             -t dronecad/ros2-jazzy:ci docker/ros2-jazzy
       - name: Colcon build + URDF tests (container)
         run: |
-          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
+          docker run --rm --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
             -v "$PWD/ws:/workspace" dronecad/ros2-jazzy:ci bash -lc "
               source /opt/ros/jazzy/setup.bash &&
               cd /workspace && colcon build &&
@@ -71,7 +71,7 @@ jobs:
               python3 -m pytest /workspace/src/humanoid_description/test/test_urdf.py -q"
       - name: Headless Gazebo standing test (container)
         run: |
-          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
+          docker run --rm --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
             -v "$PWD/ws:/workspace" dronecad/ros2-jazzy:ci bash -lc "
               source /opt/ros/jazzy/setup.bash &&
               source /workspace/install/setup.bash &&

@@ -11,7 +11,7 @@ from __future__ import annotations
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
@@ -62,19 +62,25 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
     )
 
-    # EN: spawn after the server is up / FR : spawn après le démarrage du serveur
+    # EN: spawn via a waiter — `ros_gz_sim create` has no "wait for the world" flag, and a fixed
+    #     timer is a race: on a slow CI runner (4 vCPU) the spawn was lost and the robot never
+    #     appeared (CI run 35412876213, 2026-09-19).
+    # FR : spawn via un attentiste — `ros_gz_sim create` n'a aucune option « attendre le monde »,
+    #     et une minuterie fixe est une course : sur un runner CI lent (4 vCPU), le spawn était
+    #     perdu et le robot n'apparaissait jamais (run CI 35412876213, 2026-09-19).
     spawn = TimerAction(
-        period=2.0,
+        period=1.0,
         actions=[
             Node(
-                package="ros_gz_sim",
-                executable="create",
+                package="humanoid_gazebo",
+                executable="spawn_ready.py",
                 arguments=[
-                    "-topic", "/robot_description",
-                    "-name", "humanoid",
-                    "-z", "1.08",
+                    "--world",
+                    PythonExpression(["'", world_file, "'.replace('.sdf', '')"]),
+                    "--topic", "/robot_description",
+                    "--name", "humanoid",
+                    "--z", "1.08",
                 ],
-                parameters=[{"use_sim_time": True}],
                 output="screen",
             )
         ],
@@ -104,14 +110,14 @@ def generate_launch_description() -> LaunchDescription:
             Node(
                 package="controller_manager",
                 executable="spawner",
-                arguments=["joint_state_broadcaster", "--controller-manager-timeout", "60"],
+                arguments=["joint_state_broadcaster", "--controller-manager-timeout", "180"],
                 parameters=[{"use_sim_time": True}],
                 output="screen",
             ),
             Node(
                 package="controller_manager",
                 executable="spawner",
-                arguments=["joint_position_controller", "--controller-manager-timeout", "60"],
+                arguments=["joint_position_controller", "--controller-manager-timeout", "180"],
                 parameters=[{"use_sim_time": True}],
                 output="screen",
             ),
