@@ -218,7 +218,15 @@ def load_allowlist(path: Path = ALLOWLIST_FILE) -> dict[str, Any]:
 
 
 def _mcp_command(server: str) -> tuple[list[str], dict[str, str]]:
-    """Extrait la commande du serveur depuis .mcp.json / extracts the server command."""
+    """Extrait la commande du serveur depuis .mcp.json (avec expansion ``${VAR}``).
+
+    EN: extracts the server command from .mcp.json, expanding ``${VAR}`` references —
+        Claude Code expands them itself; our client mirrors that behaviour.
+    FR : extrait la commande du serveur depuis `.mcp.json` en expansant les ``${VAR}`` —
+        Claude Code le fait nativement ; notre client reproduit ce comportement.
+    """
+    import os
+
     config = json.loads(MCP_CONFIG.read_text(encoding="utf-8"))
     servers = config.get("mcpServers", {})
     if server not in servers:
@@ -226,8 +234,14 @@ def _mcp_command(server: str) -> tuple[list[str], dict[str, str]]:
             f"Serveur inconnu / unknown server: {server!r} (dispo : {sorted(servers)})"
         )
     spec = servers[server]
-    command = [spec["command"], *spec.get("args", [])]
-    return command, dict(spec.get("env", {}))
+    command = [
+        os.path.expandvars(str(part)) for part in [spec["command"], *spec.get("args", [])]
+    ]
+    env = {
+        key: os.path.expandvars(str(value))
+        for key, value in (spec.get("env") or {}).items()
+    }
+    return command, env
 
 
 def main(argv: Sequence[str] | None = None) -> int:

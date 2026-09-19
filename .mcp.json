@@ -21,8 +21,15 @@
       ]
     },
     "rosbags": {
-      "command": "python",
-      "args": ["${DRONECAD_HOME}/vendor/mcp-rosbags/src/server.py"]
+      "command": "uv",
+      "args": [
+        "run",
+        "--with-requirements",
+        "${DRONECAD_HOME}/vendor/mcp-rosbags/requirements.txt",
+        "--with",
+        "rosbags<0.10",
+        "${DRONECAD_HOME}/vendor/mcp-rosbags/src/server.py"
+      ]
     },
     "memory": {
       "command": "npx",

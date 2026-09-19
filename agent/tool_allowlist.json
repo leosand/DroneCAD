@@ -1,7 +1,19 @@
 {
   "_note": "Allowlist d'outils MCP par phase (brief fondateur §4). blender et memory : VÉRIFIÉS par tools/list réel (2026-09-18, voir docs/mcp-tools-verified.md) — sous-ensembles pertinents retenus. Les autres serveurs restent VIDES tant que leurs noms d'outils réels n'ont pas été figés depuis `python agent/agent_loop.py --list-tools <serveur>` (le garde refuse tout ce qui est absent).",
   "design": {
-    "freecad": [],
+    "freecad": [
+      "create_document",
+      "create_sketch",
+      "add_sketch_rectangle",
+      "add_sketch_circle",
+      "pad_sketch",
+      "export_step",
+      "save_document",
+      "list_documents",
+      "get_active_document",
+      "get_screenshot",
+      "get_connection_status"
+    ],
     "memory": ["remember", "recall", "recall_by_tags", "context_summary"]
   },
   "model": {
@@ -30,11 +42,29 @@
     "memory": ["remember", "recall", "recall_by_tags", "context_summary"]
   },
   "analyze": {
-    "rosbags": [],
+    "rosbags": [
+      "set_bag_path",
+      "bag_info",
+      "list_bags",
+      "get_messages_in_range",
+      "search_messages",
+      "analyze_trajectory",
+      "analyze_logs",
+      "plot_timeseries",
+      "get_tf_tree"
+    ],
     "memory": ["remember", "recall", "recall_by_tags", "context_summary"]
   },
   "iterate": {
-    "freecad": [],
+    "freecad": [
+      "create_sketch",
+      "add_sketch_rectangle",
+      "add_sketch_circle",
+      "pad_sketch",
+      "export_step",
+      "get_screenshot",
+      "recompute_document"
+    ],
     "blender": ["execute_blender_code", "export_scene"],
     "memory": ["remember", "recall", "recall_by_tags", "context_summary"]
   }
