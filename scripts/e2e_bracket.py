@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -36,6 +35,8 @@ from agent_loop import (
     ToolCall,
     _mcp_command,
     load_allowlist,
+    mcp_environment,
+    mcp_working_directory,
 )
 from mcp_stdio import StdioMCPClient
 
@@ -122,7 +123,12 @@ class EndToEnd:
         clients: dict[str, StdioMCPClient] = {}
         for server in ("freecad", "blender", "ros2", "rosbags"):
             command, env = _mcp_command(server)  # ${VAR} + résolution PATHEXT / expansion
-            client = StdioMCPClient(command, name=server, env={**os.environ, **env})
+            client = StdioMCPClient(
+                command,
+                name=server,
+                env=mcp_environment(server, env),
+                cwd=mcp_working_directory(server),
+            )
             client.start(initialize_timeout_s=120.0)
             clients[server] = client
         self.clients = clients

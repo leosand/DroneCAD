@@ -17,8 +17,12 @@
 # FR : le registre MCP utilise ${DRONECAD_HOME} pour le serveur rosbags vendoré — sans elle,
 #     l'outil échoue désormais avec un message explicite plutôt qu'un « fichier introuvable » nu.
 $env:DRONECAD_HOME = "E:\Mes apps\DroneCAD"
-# EN: cognitive-memory key — YOUR key for YOUR local server (cp .env.example .env, first time only)
-# FR : clé de la mémoire cognitive — la VÔTRE, pour votre serveur local (cp .env.example .env, une fois)
+# EN: cognitive-memory key — YOUR key for YOUR local server (cp .env.example .env, first time only).
+#     The repo's own scripts read `.env` themselves; this export is only needed by EXTERNAL MCP
+#     clients (Claude Code, Cursor) which expand ${SHODH_API_KEYS} from their own environment.
+# FR : clé de la mémoire cognitive — la VÔTRE, pour votre serveur local (cp .env.example .env, une
+#     fois). Les scripts du dépôt lisent `.env` eux-mêmes ; cet export ne sert qu'aux clients MCP
+#     EXTERNES (Claude Code, Cursor), qui expansent ${SHODH_API_KEYS} depuis leur environnement.
 $env:SHODH_API_KEYS = (Get-Content .env | Select-String '^SHODH_API_KEYS=').Line.Split('=')[1]
 cd $env:DRONECAD_HOME
 
@@ -76,9 +80,9 @@ Attendu / expected :
 ## 4. 2 min — les 5 serveurs MCP / the 5 MCP servers
 
 ```powershell
-python agent\mcp_call.py blender get_scene_info       # scène vivante / live scene (3 objets)
-python agent\mcp_call.py freecad get_freecad_version  # FreeCAD 1.1.3, gui_available: 1
-python agent\mcp_call.py ros2 ros2_topic_list         # graphe ROS 2 du conteneur / container graph
+python agent\mcp_call.py blender get_scene_info '{"user_prompt": "liste les objets"}'   # scène vivante
+python agent\mcp_call.py freecad get_freecad_version   # FreeCAD 1.1.3
+python agent\mcp_call.py ros2 ros2_topic_list          # graphe ROS 2 du conteneur
 python agent\mcp_call.py rosbags set_bag_path '{"path": "E:/Mes apps/DroneCAD/artifacts/e2e_bag"}'
 python agent\mcp_call.py memory memory_stats          # mémoire locale / local memory (🐘 v0.2.0)
 ```

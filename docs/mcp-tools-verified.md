@@ -19,7 +19,7 @@
 
 | Appel | Résultat |
 |---|---|
-| `blender get_scene_info` | ✅ **scène vivante** : protocole v7, addon v1.7 `up_to_date`, 3 objets (`Cube`, `Light`, `Camera`), 2 matériaux — lu depuis la Blender GUI ouverte (socket 9876) |
+| `blender get_scene_info` | ✅ **scène vivante** : `{"user_prompt": "…"}` (l'addon exige ce champ depuis sa mise à jour — un appel sans argument renvoie une erreur de validation pydantic) → 4 objets (`Light`, `Camera`, …), lu depuis la Blender GUI ouverte (socket 9876) |
 | `freecad get_freecad_version` | ✅ **instance vivante** : FreeCAD **1.1.3**, build 20260725, `gui_available: 1` (XML-RPC 9875) |
 | `ros2 ros2_topic_list` | ✅ **graphe ROS 2 vivant** dans le conteneur (`/parameter_events`, types réels) |
 | `memory memory_stats` · `remember` · `recall` | ✅ **mémoire locale opérationnelle** — clé générée dans `.env` (aucun abonnement tiers) : `memory_stats` → « 🐘 Memory Statistics v0.2.0 » ; cycle `remember` → `recall` vérifié le 2026-09-19 (**95 % de pertinence**, identifiant persistant) |

@@ -16,13 +16,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from agent_loop import _mcp_command
+from agent_loop import _mcp_command, mcp_environment, mcp_working_directory
 from mcp_stdio import StdioMCPClient
 
 MAX_PRINT_CHARS = 2000
@@ -43,7 +42,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     command, env = _mcp_command(args.server)
-    client = StdioMCPClient(command, name=args.server, env={**os.environ, **env})
+    client = StdioMCPClient(
+        command,
+        name=args.server,
+        env=mcp_environment(args.server, env),
+        cwd=mcp_working_directory(args.server),
+    )
     try:
         client.start(initialize_timeout_s=args.timeout)
         result = client.call_tool(args.tool, call_args, timeout_s=args.timeout)

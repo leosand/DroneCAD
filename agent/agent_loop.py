@@ -225,16 +225,38 @@ def load_allowlist(path: Path = ALLOWLIST_FILE) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _expandvars(value: str, extra: Mapping[str, str]) -> str:
+    """Expansion ``${VAR}`` sur l'environnement + `.env` / ``${VAR}`` expansion over env + `.env`.
+
+    EN: `os.path.expandvars` only sees the process environment, so a key that lives in the
+        git-ignored `.env` was expanded to a literal `${SHODH_API_KEYS}` and the memory server
+        answered `401 INVALID_API_KEY` (reproduced 2026-09-19). `.env` values take precedence
+        over the shell, matching what the compose file does for the container side.
+    FR : `os.path.expandvars` ne voit que l'environnement du processus : une clé vivant dans le
+        `.env` ignoré était expansée en `${SHODH_API_KEYS}` littéral et le serveur de mémoire
+        répondait `401 INVALID_API_KEY` (reproduit le 2026-09-19). Les valeurs de `.env`
+        priment sur le shell, comme le compose le fait côté conteneur.
+    """
+    import os as _os
+
+    resolved = value
+    for key, val in {**_os.environ, **extra}.items():
+        if val:
+            resolved = resolved.replace(f"${{{key}}}", val).replace(f"%{key}%", val)
+    return resolved
+
+
 def _mcp_command(server: str) -> tuple[list[str], dict[str, str]]:
     """Extrait la commande du serveur depuis .mcp.json (avec expansion ``${VAR}``).
 
     EN: extracts the server command from .mcp.json, expanding ``${VAR}`` references —
-        Claude Code expands them itself; our client mirrors that behaviour.
+        Claude Code expands them itself; our client mirrors that behaviour, reading `.env`
+        as well so the memory key never has to be exported in every shell.
     FR : extrait la commande du serveur depuis `.mcp.json` en expansant les ``${VAR}`` —
-        Claude Code le fait nativement ; notre client reproduit ce comportement.
+        Claude Code le fait nativement ; notre client reproduit ce comportement en lisant
+        aussi `.env`, pour ne jamais avoir à exporter la clé de mémoire dans chaque shell.
     """
-    import os
-
+    dotenv = _dotenv_values()
     config = json.loads(MCP_CONFIG.read_text(encoding="utf-8"))
     servers = config.get("mcpServers", {})
     if server not in servers:
@@ -243,7 +265,7 @@ def _mcp_command(server: str) -> tuple[list[str], dict[str, str]]:
         )
     spec = servers[server]
     command = [
-        os.path.expandvars(str(part)) for part in [spec["command"], *spec.get("args", [])]
+        _expandvars(str(part), dotenv) for part in [spec["command"], *spec.get("args", [])]
     ]
     # EN: an undefined ${VAR} stays literal and only fails later as "file not found" — say it now.
     # FR : une ${VAR} non définie reste littérale et n'échoue que plus tard en « fichier
@@ -253,15 +275,82 @@ def _mcp_command(server: str) -> tuple[list[str], dict[str, str]]:
         raise SystemExit(
             f"Variable d'environnement non définie dans .mcp.json (serveur {server!r}) :\n"
             + "\n".join(f"  {part}" for part in unresolved)
-            + "\n-> definir la variable puis relancer, ex. Git Bash : "
-            "export DRONECAD_HOME='/e/Mes apps/DroneCAD' | PowerShell : "
+            + "\n-> definir la variable dans .env (voir .env.example), ou l'exporter : "
+            "Git Bash : export DRONECAD_HOME='/e/Mes apps/DroneCAD' | PowerShell : "
             "$env:DRONECAD_HOME = 'E:\\Mes apps\\DroneCAD'"
         )
     env = {
-        key: os.path.expandvars(str(value))
+        key: _expandvars(str(value), dotenv)
         for key, value in (spec.get("env") or {}).items()
     }
     return command, env
+
+
+def _dotenv_values() -> dict[str, str]:
+    """Valeurs de ``.env`` (fichier ignoré par git) / values from the git-ignored ``.env``.
+
+    EN: the memory key lives in `.env` so nobody has to export it in every shell; a missing
+        file simply yields an empty mapping. Kept dependency-free on purpose.
+    FR : la clé de mémoire vit dans `.env` pour éviter de l'exporter dans chaque shell ; un
+        fichier absent donne simplement un dictionnaire vide. Sans dépendance, volontairement.
+    """
+    values: dict[str, str] = {}
+    path = REPO_ROOT / ".env"
+    if not path.is_file():
+        return values
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and value:
+            values[key] = value
+    return values
+
+
+def mcp_environment(server: str, declared: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Environnement à transmettre à un serveur MCP / environment handed to an MCP server.
+
+    EN: the process environment plus `.env`, minus the variables that belong to OTHER servers.
+        Verified failure (2026-09-19): exporting `SHODH_API_KEYS` in the shell made the
+        `freecad` server refuse to start — pydantic rejected the extra input `shodh_api_keys`
+        (`extra_forbidden`), and every FreeCAD tool call timed out. The memory key is therefore
+        stripped for every server except `memory`.
+    FR : l'environnement du processus plus `.env`, moins les variables qui appartiennent à
+        D'AUTRES serveurs. Échec vérifié (2026-09-19) : exporter `SHODH_API_KEYS` dans le shell
+        empêchait le serveur `freecad` de démarrer — pydantic rejetait l'entrée supplémentaire
+        `shodh_api_keys` (`extra_forbidden`) et tout appel d'outil FreeCAD expirait. La clé de
+        mémoire est donc retirée pour tous les serveurs sauf `memory`.
+    """
+    import os as _os
+
+    environment = {**_os.environ, **_dotenv_values(), **(declared or {})}
+    if server != "memory":
+        for key in [k for k in environment if k.upper().startswith("SHODH_")]:
+            environment.pop(key)
+    return environment
+
+
+def mcp_working_directory(server: str) -> str:
+    """Répertoire de travail du serveur MCP / MCP server working directory.
+
+    EN: MCP servers must not run *inside* the repository: `freecad-robust-mcp`
+        (pydantic-settings) reads the `.env` of its working directory and rejected our
+        `SHODH_API_KEYS` as a forbidden extra input, so the server crashed at start-up and
+        every FreeCAD call timed out (reproduced then fixed on 2026-09-19 — with a neutral
+        directory it exposes its 83 tools again). The repository stays the working directory
+        for `rosbags`, whose wrapper resolves project-relative bag paths.
+    FR : les serveurs MCP ne doivent pas tourner *dans* le dépôt : `freecad-robust-mcp`
+        (pydantic-settings) lit le `.env` de son répertoire de travail et rejetait notre
+        `SHODH_API_KEYS` comme entrée interdite — le serveur plantait au démarrage et chaque
+        appel FreeCAD expirait (reproduit puis corrigé le 2026-09-19 : avec un répertoire
+        neutre, il expose de nouveau ses 83 outils). Le dépôt reste le répertoire de travail
+        du serveur `rosbags`, dont le wrapper résout des chemins de sacs relatifs au projet.
+    """
+    import tempfile
+
+    return str(REPO_ROOT) if server == "rosbags" else tempfile.gettempdir()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -290,7 +379,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.list_tools:
         server = args.list_tools
         command, env = _mcp_command(server)
-        client = StdioMCPClient(command, name=server, env={**__import__("os").environ, **env})
+        client = StdioMCPClient(
+            command,
+            name=server,
+            env=mcp_environment(server, env),
+            cwd=mcp_working_directory(server),
+        )
         try:
             client.start(initialize_timeout_s=args.timeout)
             tools = client.list_tools(timeout_s=args.timeout)

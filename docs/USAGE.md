@@ -13,12 +13,15 @@
 ```powershell
 cd "E:\Mes apps\DroneCAD"
 $env:DRONECAD_HOME  = "E:\Mes apps\DroneCAD"     # requis par l'entrée MCP « rosbags »
-$env:SHODH_API_KEYS = (Get-Content .env | Select-String '^SHODH_API_KEYS=').Line.Split('=')[1]
 
 docker compose up -d            # ros2-jazzy (ROS 2 + Gazebo + MoveIt 2) + shodh-memory
 docker compose ps               # les deux services doivent être « Up » / both must be « Up »
 python scripts\validate_stack.py
 ```
+
+La clé de mémoire vit dans `.env` et **les scripts du dépôt la lisent tout seuls** : rien à
+exporter. Seuls les clients MCP externes (Claude Code, Cursor) ont besoin de `SHODH_API_KEYS`
+dans leur propre environnement, puisqu'ils expansent `${SHODH_API_KEYS}` eux-mêmes.
 
 Le serveur de modèle est `gpt-oss:20b` sur `:11499` : `scripts\start-ollama-gptoss.ps1` le démarre
 s'il ne tourne pas. Côté hôte, FreeCAD et Blender doivent être **ouverts** (ponts MCP en loopback
