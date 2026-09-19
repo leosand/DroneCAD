@@ -77,42 +77,41 @@ jobs:
         #     runs CI du 2026-09-19 montraient un `gz sim` muet (aucune liste de topics, aucune
         #     ligne de journal) alors qu'il fonctionne sur la station, donc cette étape capture
         #     la sortie réelle du serveur.
-        # EN: GZ_IP + localhost-only discovery — CI runners have several interfaces and no
-        #     routable multicast, which stalls gz-transport/DDS discovery.
-        # FR : GZ_IP + découverte limitée à localhost — les runners CI ont plusieurs interfaces
-        #     et pas de multicast routable, ce qui bloque la découverte gz-transport/DDS.
+        # EN: runs as uid 1000 (`ubuntu` in the image) for the same reason as the standing test
+        #     below — an uid without a passwd entry makes gz-transport silent — and mounts the
+        #     workspace read-only (the server only reads the world file).
+        # FR : tourne en uid 1000 (`ubuntu` de l'image) pour la même raison que le test debout
+        #     ci-dessous — un uid sans entrée passwd rend gz-transport muet — et monte l'espace de
+        #     travail en lecture seule (le serveur ne fait que lire le fichier de monde).
         run: |
-          docker run --rm --network host --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
-            -e GZ_IP=127.0.0.1 -e ROS_LOCALHOST_ONLY=1 -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
-            -e FASTRTPS_DEFAULT_PROFILES_FILE=/opt/dronecad/fastdds-localhost.xml \
-            -v "$PWD/ws:/workspace" dronecad/ros2-jazzy:ci bash -lc '
-              source /opt/ros/jazzy/setup.bash && source /workspace/install/setup.bash ;
-              WORLD=/workspace/install/humanoid_gazebo/share/humanoid_gazebo/worlds/flat_ground_headless.sdf ;
-              echo "=== flags interfaces (0x1000 = IFF_MULTICAST) ===" ;
-              for i in lo eth0 ; do printf "%s: " $i ; cat /sys/class/net/$i/flags 2>/dev/null || echo absent ; done ;
-              echo "=== binaires gz-transport ===" ;
-              ls /opt/ros/jazzy/opt/gz_transport_vendor/bin/ 2>/dev/null || echo "(pas de bin)";
-              echo "=== DDS inter-processus (pub puis list/echo) ===" ;
-              ( timeout 45 ros2 topic pub -r 2 /dronecad_probe std_msgs/msg/String "{data: ping}" > /tmp/pub.log 2>&1 & ) ;
-              sleep 8 ;
-              echo "topics vus par un 2e processus :" ; ros2 topic list 2>/dev/null | head -6 ;
-              timeout 20 ros2 topic echo --once /dronecad_probe 2>&1 | head -3 ;
-              echo "=== gz cas defaut (aucune variable) ===" ;
-              ( env -u GZ_IP timeout 40 gz sim -r -s $WORLD > /tmp/gz_def.log 2>&1 & ) ;
-              sleep 20 ; env -u GZ_IP gz topic -l | head -3 ; pkill -f "gz sim" ; sleep 3 ;
-              echo "=== gz cas GZ_IP=127.0.0.1 ===" ;
-              ( GZ_IP=127.0.0.1 timeout 40 gz sim -r -s $WORLD > /tmp/gz_lo.log 2>&1 & ) ;
-              sleep 20 ; GZ_IP=127.0.0.1 gz topic -l | head -3 ; pkill -f "gz sim" ; sleep 2 ;
-              echo "=== fin sonde ==="'
+          docker run --rm --network host --user 1000:1000 --shm-size=1g -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
+            -v "$PWD/ws:/workspace:ro" dronecad/ros2-jazzy:ci bash -lc '
+              source /opt/ros/jazzy/setup.bash ;
+              W=/workspace/install/humanoid_gazebo/share/humanoid_gazebo/worlds/flat_ground_headless.sdf ;
+              ( timeout 90 gz sim -r -s $W > /tmp/gz.log 2>&1 & ) ;
+              sleep 25 ;
+              echo "--- topics annoncés ---" ; gz topic -l | head -5 ;
+              if gz topic -l | grep -q "^/clock" ; then
+                echo "SMOKE OK — le serveur annonce ses topics" ; rc=0 ;
+              else
+                echo "ECHEC — aucun topic annoncé par le serveur" ; tail -20 /tmp/gz.log ; rc=1 ;
+              fi ;
+              pkill -f "gz sim" ; exit $rc'
       - name: Headless Gazebo standing test (container)
+        # EN: uid 1000 (the image's `ubuntu`, present in /etc/passwd) — the runner's uid 1001 has
+        #     no passwd entry and gz-transport then discovers nothing (reproduced on the
+        #     workstation: uid 1000 → topics listed, uid 1001 → silent, 2026-09-19). The workspace
+        #     is mounted read-only because this step only reads the built install tree.
+        # FR : uid 1000 (`ubuntu` de l'image, présent dans /etc/passwd) — l'uid 1001 du runner n'a
+        #     aucune entrée passwd et gz-transport ne découvre alors rien (reproduit sur la station :
+        #     uid 1000 → topics listés, uid 1001 → muet, 2026-09-19). L'espace de travail est monté
+        #     en lecture seule, cette étape ne fait que lire l'arborescence install compilée.
         run: |
-          docker run --rm --network host --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
-            -e GZ_IP=127.0.0.1 -e ROS_LOCALHOST_ONLY=1 -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
-            -e FASTRTPS_DEFAULT_PROFILES_FILE=/opt/dronecad/fastdds-localhost.xml \
-            -v "$PWD/ws:/workspace" dronecad/ros2-jazzy:ci bash -lc "
+          docker run --rm --network host --user 1000:1000 --shm-size=1g -e HOME=/tmp -e ROS_LOG_DIR=/tmp/ros_logs \
+            -v "$PWD/ws:/workspace:ro" dronecad/ros2-jazzy:ci bash -lc "
               source /opt/ros/jazzy/setup.bash &&
               source /workspace/install/setup.bash &&
-              cd /workspace && python3 -m pytest src/humanoid_gazebo/test/test_stand.py -q -s"
+              cd /workspace && python3 -m pytest src/humanoid_gazebo/test/test_stand.py -q -s -o cache_dir=/tmp/.pytest_cache"
       - name: Trivy scan (HIGH/CRITICAL fixables)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:

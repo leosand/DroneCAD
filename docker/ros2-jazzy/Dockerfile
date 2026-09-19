@@ -69,14 +69,6 @@ RUN mkdir -p /workspace /artifacts
 COPY --from=mcp /opt/ros2-mcp /opt/ros2-mcp
 COPY --from=mcp /root/.local/bin/uv /usr/local/bin/uv
 
-# EN: Fast DDS "localhost" profile (explicit loopback peers, no multicast). Shipped but only
-#     activated where the environment lacks multicast (CI runners) through
-#     FASTRTPS_DEFAULT_PROFILES_FILE — the workstation keeps the default discovery.
-# FR : profil Fast DDS « localhost » (pairs loopback explicites, sans multicast). Embarqué mais
-#     activé seulement là où le multicast manque (runners CI) via
-#     FASTRTPS_DEFAULT_PROFILES_FILE — la station conserve la découverte par défaut.
-COPY fastdds-localhost.xml /opt/dronecad/fastdds-localhost.xml
-
 ENV HOME=/home/ubuntu
 RUN chown -R 1000:1000 /workspace /artifacts /opt/ros2-mcp
 
