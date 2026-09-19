@@ -4,9 +4,7 @@ Toutes les modifications notables de ce projet sont documentées ici.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) · Versioning : [SemVer](https://semver.org/lang/fr/) · Horodatage ISO 8601 (fuseau local).
 Les releases sont *delivery-gated* et **full-auto** : gérées par `.harness/scripts/release-check.py` (déclaré le 2026-09-18, mode `full-auto`).
 
-## [Unreleased]
-
-### Added
+## [v0.2.0] - 2026-09-18
 
 - **Phase 1** — image `dronecad/ros2-jazzy:0.1.0` multi-étapes (base : ROS 2 Jazzy + Gazebo Harmonic 8.15.0, `ros_gz` 1.0.24, `ros2_control` 4.48.0, MoveIt 2 2.12.4, `gz_ros2_control` 1.2.20 ; mcp : serveur `wise-vision/ros2_mcp` tag `2606` vendoré, venv **python système 3.12** avec assertion de build ; runtime : non-root uid 1000) ; conteneurs démarrés non-root, **démarrage de pile 3 s** ; pont FreeCAD natif `robust-mcp` v0.6.2 installé côté hôte.
 - **Phase 2** — paquets ROS 2 `humanoid_description` (humanoïde 28 DoF, inerties calculées, capteurs RGB-D/IMU/contacts, transmissions `ros2_control`), `humanoid_gazebo` (mondes sol plat + obstacles, pont `ros_gz_bridge`, launch) et `humanoid_control` (contrôleurs position + effort, test de squat) : **robot debout ≥ 10 s simulées vérifié** (z = 1,065 m, roll/pitch ≈ 0, RTF 0,50 sans caméra) ; **squat suivi 0,031 rad** (seuil 0,25) ; 11/11 tests URDF (dont `check_urdf`).
