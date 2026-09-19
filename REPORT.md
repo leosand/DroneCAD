@@ -1,6 +1,6 @@
 # REPORT.md — DroneCAD : état vérifié & auto-évaluation
 
-> Dernière mise à jour : **2026-09-19** (America/Toronto).
+> Dernière mise à jour : **2026-09-19** (America/Toronto) — CI verte (run `35418441478`).
 > EN: single source of truth for progress, evidence and deviations from the founding brief. / FR-CA : source de vérité de l'avancement — **aucun TODO silencieux**.
 
 ## Avancement global
@@ -11,7 +11,7 @@
 | 1. Isolation & orchestration | ✅ | image `dronecad/ros2-jazzy:0.1.0` (Gazebo Harmonic 8.15.0, `ros_gz`, `ros2_control`, MoveIt 2, `gz_ros2_control`) ; conteneurs non-root uid 1000 ; démarrage 3 s ; FreeCAD/Blender pontés hôte |
 | 2. Chaîne de conception humanoïde | ✅ | debout ≥ 10 s simulées, squat 0,031 rad, 11/11 tests URDF, colcon 18,8 s ; **caméra headless vérifiée (RTF 0,60 caméra+IMU)** |
 | 3. Boucle agentique MCP | ✅ | **5/5 serveurs vérifiés** + **boucle bout-en-bout E2E_OK (1/3 itérations)** ; garde-fous éprouvés en vol |
-| 4. CI/CD & qualité | ✅ | 4 tâches (`validate`, `lint`, `container-tests` = colcon + debout **dans l'image livrée** + **Trivy HIGH/CRITICAL corrigeables**, `secret-scan`) ; **image locale Trivy-clean** (0 HIGH/CRITICAL corrigeable) ; actions épinglées par SHA. Premier run `35412876213` **en échec** sur deux défauts réels → corrigés en `3e7635f` (écarts 15-16 ci-dessous) |
+| 4. CI/CD & qualité | ✅ | **CI verte — run `35418441478`** (les 4 tâches : `validate`, `lint`, `container-tests` = colcon + **fumée Gazebo** + debout **dans l'image livrée** + **Trivy HIGH/CRITICAL corrigeables**, `secret-scan`) ; actions épinglées par SHA. Cinq runs rouges avant le vert : quatre défauts réels + une CVE CRITICAL corrigée (voir § *Porte qualité CI*) |
 | 5. Vérification | ✅ 8/8 | tableau ci-dessous |
 
 ## Phase 0 — Matériel & modèle local — ✅ TERMINÉE
@@ -69,6 +69,19 @@ Pistes explorées puis **écartées par la mesure** (elles n'étaient pas la cau
 
 Ce que la CI protège désormais (job `container-tests`) : build de l'image livrée → `colcon build` + tests URDF → **fumée du serveur Gazebo** (« `/clock` annoncé ») → **test debout dans l'image** (10 s simulées, base z = 1,065 m) → **Trivy** HIGH/CRITICAL corrigeables. Vérification locale de la configuration exacte du job (uid 1000, `ws` en lecture seule) : **1 passed en 41,9 s**.
 
+**Dernier obstacle, lui aussi réel : le disque du runner.** Trivy n'a pas signalé de vulnérabilité mais a échoué deux fois, d'abord par manque d'espace (`failed to copy the image: … no space left on device` — l'image de 6,3 Go est exportée décompressée, ~20 Go, pour 8,6 Go libres), puis une fois le scan passé, il a correctement **bloqué le merge** sur une faille : `anyio 4.9.0` — **CVE-2026-63374 (CRITICAL)**, corrigée en 4.14.2. Traitée comme les quatre précédentes : bump ciblé du venv vendoré (`anyio>=4.14.2` → 4.15.1), image reconstruite, serveur MCP ros2 revérifié, versions contrôlées dans l'image.
+
+### ✅ Vert — run `35418441478` (commit `9e7bc84`)
+
+| Job | Étapes | Résultat |
+|---|---|---|
+| `validate` | compose, `validate_stack.py`, URDF, garde-fous | ✅ |
+| `lint` | ruff (`agent/`, `scripts/`, `ws/src/`) | ✅ |
+| `container-tests` | image → colcon + 11 tests URDF → **fumée Gazebo** → **debout dans l'image** → **Trivy** | ✅ |
+| `secret-scan` | gitleaks | ✅ |
+
+Le test debout tourne donc désormais **en CI, dans l'image livrée**, et la porte qualité a démontré sa valeur : elle a attrapé quatre défauts réels et une CVE CRITICAL qu'aucune vérification locale ne pouvait voir.
+
 ## Phase 5 — Liste de contrôle du brief (auto-vérification)
 
 | # | Critère | État | Preuve / note |
@@ -78,7 +91,7 @@ Ce que la CI protège désormais (job `container-tests`) : build de l'image livr
 | 3 | `.mcp.json` : chaque serveur répond à un appel `tools/list` réel | ✅ | **5/5** (31/83/20/15/38) + appels réels (scène Blender, FreeCAD 1.1.3, topics ROS 2, bag v9) |
 | 4 | Robot humanoïde debout ≥ 10 s dans Gazebo (log `joint_states`) | ✅ | z=1,065 m ; 1,056 m après squat (E2E) |
 | 5 | Boucle agentique complète (STEP, BLEND, URDF, ROS bag, diagnostic) | ✅ | **E2E_OK** itération 1/3 — STEP+STL, BLEND+GLB, bag 17 656 msgs, diagnostic effort |
-| 6 | CI verte sur la branche `feature/initial-stack` | ✅ | bootstrap + `main` verte à chaque commit ; nouveaux jobs Phase 4 en place |
+| 6 | CI verte sur la branche `feature/initial-stack` | ✅ | **run `35418441478` : 4/4 jobs verts** ; `feature/initial-stack` alignée sur ce commit (fast-forward) ; cinq runs rouges d'abord, chaque cause corrigée puis re-vérifiée |
 | 7 | Aucun secret, aucun port exposé publiquement, scan Trivy propre | ✅ | `validate_stack.py` OK ; gitleaks vert ; **Trivy : image propre** (0 HIGH/CRITICAL corrigeable) ; secret scanning GitHub indisponible (GHAS) → compensé |
 | 8 | Table des dépôts GitHub audités (adopt/fork/inspiration) | ✅ | `README.md` § *Reference repositories audited* |
 
@@ -101,7 +114,8 @@ build   : colcon 3 paquets (18,8 s) · URDF 11/11 · garde-fous 7/7 · ruff « A
 gazebo  : debout 10 s (z=1,065) · squat 0,031 rad · RTF 0.50 (sans) / 0.60 (caméra+IMU) · /camera/* publiés
 mcp     : tools/list 5/5 · appels réels blender/freecad/ros2 · bag v9 lu par rosbags (17 656 msgs)
 e2e     : E2E_OK 1/3 — STEP/STL/BLEND/GLB + bag + diagnostic effort 0,055 Nm ; journal 44 entrées
-trivy   : image dronecad/ros2-jazzy:0.1.0 → 0 HIGH/CRITICAL corrigeable (ghcr.io/aquasecurity/trivy:0.74.0)
+trivy   : image dronecad/ros2-jazzy:0.1.0 → 0 HIGH/CRITICAL corrigeable (local, 0.74.0) ; CI : image propre après bump anyio (CVE-2026-63374)
+ci      : run 35418441478 → validate ✅ lint ✅ container-tests ✅ (colcon + fumée Gazebo + debout dans l'image + Trivy) secret-scan ✅
 ollama  : gpt-oss:20b 100% GPU ctx 8192 — 115,44 tok/s · 1 463 Mio libres
 releases: v0.1.0 · v0.2.0 (vérifiées) · [Unreleased] prêt pour la prochaine coupe full-auto (v0.3.0)
 ```
@@ -121,3 +135,4 @@ releases: v0.1.0 · v0.2.0 (vérifiées) · [Unreleased] prêt pour la prochaine
 | ~00:40–00:50 | Relances FreeCAD/Blender par l'agent ; 5/5 serveurs ; rosbags sous-module |
 | ~21:00 | **E2E_OK** (équerre→Blender→sim+bag→diagnostic) ; wrapper rosbags v9 |
 | ~21:30 | **Phase 4** : CI lint/container-tests/Trivy ; caméra headless + RTF 0,60 ; bumps sécurité ; **Trivy local propre** ; ADR-0008 |
+| ~22:00–23:20 | **CI verte** (run `35418441478`) après cinq runs rouges : `EXE001` (chmod Windows), course du spawn → `spawn_ready.py`, monde OGRE2 → `flat_ground_headless.sdf`, **uid 1001 sans entrée passwd → gz-transport muet**, CVE CRITICAL `anyio` corrigée ; instrumentation du test et étape de fumée ajoutées |
