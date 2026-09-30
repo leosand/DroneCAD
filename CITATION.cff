@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "DroneCAD"
+abstract: "Local-first agentic prototyping stack for humanoid robotics: Blender, FreeCAD, ROS 2 Jazzy, Gazebo Harmonic and MCP, driven by a local LLM."
+authors:
+  - family-names: "Sandjong"
+    given-names: "Leonel"
+repository-code: "https://github.com/leosand/DroneCAD"
+license: MIT
+keywords:
+  - robotics
+  - ros2
+  - mcp
+  - freecad
+  - blender
+  - gazebo
+  - ollama
+  - urdf
