@@ -1,135 +1,85 @@
-# ARCHITECTURE.md — DroneCAD
+# Architecture decisions
 
-> EN: Architecture Decision Records (ADR) and current limits. / FR-CA : décisions d'architecture et limites actuelles.
-> Each ADR follows: Context → Decision → Consequences → Alternatives considered.
+Architecture Decision Records (ADR) for DroneCAD. Each record follows: context, decision, consequences, alternatives. For a short overview see [docs/OVERVIEW.md](docs/OVERVIEW.md).
 
----
+## ADR-0001: Windows host with Docker Desktop (WSL2)
 
-## ADR-0001 — Execution platform: Windows host + Docker Desktop (WSL2)
+Status: accepted.
 
-**Date:** 2026-09-18 · **Status:** accepted
+- Context: the original brief assumed a Linux host. The reference machine runs Windows with an NVIDIA RTX 4070 Ti SUPER (16 GB), Docker in Linux container mode (WSL2 backend) and Ollama.
+- Decision: Blender and FreeCAD run natively on the host (GUI and GPU). ROS 2 Jazzy, Gazebo Harmonic and the ROS MCP server run in Linux containers.
+- Consequences: Gazebo validation is headless. VRAM is shared between host applications and the local model, so avoid heavy GPU work in parallel. The CPU, not the GPU, is the main risk for a real-time factor of 1.
+- Alternatives rejected: reinstalling on native Linux; a WSL2-native ROS install without Docker (the design requires compose isolation).
 
-**Context.** The founding brief assumes a Linux host (`free -h`, containers with Gazebo, xvfb in CI). The actual target machine (measured 2026-09-18) is Windows with an RTX 4070 Ti SUPER, Docker 29.7.2 (Linux container mode, WSL2 backend), WSL2 Ubuntu available, Python 3.12.10, Ollama 0.34.0.
+## ADR-0002: Local agentic model `gpt-oss:20b`
 
-**Decision.** Host stays Windows: Blender 5.2 and CAD tools run natively (GUI + GPU); ROS 2 Jazzy, Gazebo Harmonic and MCP server containers run as Linux containers via Docker Desktop/WSL2. Equivalent probes are run with PowerShell (`Get-CimInstance Win32_OperatingSystem` etc.).
+Status: accepted.
 
-**Consequences.**
-- Gazebo GUI inside containers is discouraged; validation is **headless** (`gz sim -s`, xvfb in CI). Interactive inspection uses `gz sim -g` on the host against a running server, to be validated in Phase 1/2.
-- VRAM is shared between Windows apps and containers → keep the local model + Gazebo from running heavy GPU work simultaneously.
-- CPU (Xeon W-2123, 4c/8t) is the RTF-1/1 risk factor, not the GPU — to be measured in Phase 2.
+- Context: the model must be fully resident in 16 GB of VRAM with room for the KV cache, run at 40 tokens per second or more, and keep at least 1.5 GB free.
+- Audit of candidates:
 
-**Alternatives.** Native Linux reinstall (rejected: user platform constraint) · WSL2-native ROS install without Docker (rejected for now: spec requires compose isolation; may be revisited if WSLg/GPU passthrough proves necessary).
-
----
-
-## ADR-0002 — Local agentic model: `gpt-oss:20b`
-
-**Date:** 2026-09-18 · **Status:** accepted (bench in `docs/phase-0-hardware.md`)
-
-**Context.** The brief's grid (valid 2026-09) proposes, in priority: `devstral:22b` → `gpt-oss:20b` → `qwen3-coder-next` → `gemma4:12b`, with the hard criterion "fully VRAM-resident with KV-cache margin on 16 GB" + benchmark ≥ 40 tok/s (downgrade below 25 tok/s) + ≥ 1.5 GB VRAM free while loaded.
-
-**Registry reality (audited 2026-09-18, ollama.com/library).**
-| Candidate | Actual state | Verdict |
+| Candidate | Finding | Verdict |
 |---|---|---|
-| `devstral:22b` | **does not exist** — devstral tags are all 24B (14 GB, gen-1, ~1 year old) | rejected (spec's priority-1 tag unavailable) |
-| `devstral-small-2:24b` | exists, 15 GB Q4_K_M (384K ctx, tools) | rejected: no KV-cache margin on a 16 376 MiB card (violates the ≥ 1.5 GB net criterion) |
-| `qwen3-coder-next` | exists but **52 GB** (spec estimated ~16 GB) | rejected: does not fit |
-| `gpt-oss:20b` | exists, 14 GB MXFP4, 128K ctx, tools; documented 16 GB-card agentic results | **adopted (priority 2 fallback, triggered by priority-1 unavailability)** |
-| `gemma4:12b` | exists, 7.6 GB | kept as level-4 fallback |
+| `devstral:22b` | Tag does not exist | Rejected |
+| `devstral-small-2:24b` | 15 GB, no KV-cache margin | Rejected |
+| `qwen3-coder-next` | 52 GB, does not fit | Rejected |
+| `gpt-oss:20b` | 14 GB (MXFP4), 128K context, tool calling | Adopted |
+| `gemma4:12b` | 7.6 GB | Kept as fallback |
 
-**Decision.** `gpt-oss:20b`, pulled and benchmarked 2026-09-18; measured tok/s and residual VRAM recorded in `REPORT.md` / `docs/phase-0-hardware.md`. If the benchmark had come in < 25 tok/s or margin < 1.5 GB, downgrade to `gemma4:12b` or `num_ctx=8192` per the brief.
+- Decision: `gpt-oss:20b`. Measured 115.44 tokens per second, 100% GPU residency at context 8192.
+- Alternatives rejected: a 30B MoE model with CPU offload (breaks full residency); cloud models (breaks the local-first requirement).
 
-**Consequences.** Model = strong tool-calling agentic profile; small KV footprint (MXFP4 + GQA) suits 16 GB. Single-model setup for now; the design/modeling loop (Phase 3) will confirm real-world behavior on this stack.
+## ADR-0003: Gazebo Harmonic now, MuJoCo later for reinforcement learning
 
-**Alternatives.** Running a 30B MoE (`qwen3-coder:30b`, 19 GB) with partial CPU offload (rejected: violates full-residency criterion) · cloud models (rejected: local-first requirement).
+Status: accepted.
 
----
+- Decision: Gazebo Harmonic (`gz-sim8`, long-term support) with the canonical `gazebosim/ros_gz` bridge is the simulator for phases 1 to 5. MuJoCo is recommended as a future phase for locomotion reinforcement learning. Controllers trained there would be re-validated in Gazebo.
+- Consequences: the URDF must stay MJCF-compatible (single root, convex collision primitives). A 4-core CPU may not sustain a real-time factor of 1 with the camera and IMU enabled; measured 0.60 with them and 0.50 without.
 
-## ADR-0003 — Simulation: Gazebo Harmonic now, MuJoCo recommended for future RL
+## ADR-0004: Geometry chain and URDF export
 
-**Date:** 2026-09-18 · **Status:** accepted
+Status: accepted.
 
-**Context.** The brief requires Gazebo Harmonic (`gz-sim8` series, LTS, EOL 2029 — audited) with the canonical `gazebosim/ros_gz` bridge (⚠️ `ros2/ros_gz` does not exist). The brief also asks to recommend MuJoCo as a future phase for RL locomotion.
+- Context: Phobos, the usual Blender URDF exporter, is tested on Blender 3.3 LTS and has open breakage on Blender 4.2 and later. The reference host runs Blender 5.2.
+- Decision: Blender stays on the host. URDF export must not depend on Phobos. The primary path is a deterministic `bpy` export script driven by a versioned master `.blend` file.
+- Consequences: the reproducible export requirement is kept and the Phobos dependency is removed.
 
-**Decision.** Gazebo Harmonic is the simulation/validation environment for Phases 1–5 (native ROS 2 integration, joint-state/IMU/camera topics, ros2_control). **MuJoCo is recommended as a future phase** for reinforcement-learning of locomotion (contact-rich dynamics, much faster than real time, mature RL tooling); locomotion controllers trained in MuJoCo would be re-validated in Gazebo before hardware.
+## ADR-0005: Security and isolation baseline
 
-**Consequences.** Gazebo physics + 4-core CPU may not sustain RTF 1/1 with camera+IMU at high rate — measure in Phase 2, tune sensor rates, and document. MuJoCo would need a URDF/MJCF export path (Phase 2 must keep the URDF MJCF-compatible: single root, convex collision primitives).
+Status: accepted.
 
----
+- Decision: non-root users in every container; no `privileged: true` (it would need its own ADR); published ports bound to `127.0.0.1` only; a named internal network `agentnet`; secrets only through environment variables or secret stores; GitHub Actions pinned by SHA; `scripts/validate_stack.py` enforces these rules locally and in CI. The agent loop adds a per-phase tool allowlist, per-call timeouts and a structured JSON journal with correlation IDs.
+- Rationale: least privilege is enforced mechanically, not by convention.
 
-## ADR-0004 — Geometry chain: Blender on host; Phobos is a risk on Blender ≥ 4.2
+## ADR-0006: MCP servers are spawned by the client
 
-**Date:** 2026-09-18 · **Status:** accepted; URDF export method to be finalized in Phase 2
+Status: accepted.
 
-**Context.** The brief mandates Blender (host) + Phobos (DFKI, `dfki-ric/phobos`) for URDF/SDF/SMURF export, plus the official Blender Lab MCP server "if available". Audit findings: the **official Blender MCP exists** (GPL-3.0-or-later, v1.0.3 2026-09-11, requires Blender ≥ 5.1 — host has 5.2 ✅) but its client-side server CLI is not publicly confirmed yet; the community `mcp-for-blender` has a documented invocation (`uvx mcp-for-blender`) but unverified Blender 5.x support. **Phobos is tested on Blender 3.3 LTS and has open breakage issues on Blender 4.2** — no maintained Blender ≥ 4 fork was found.
+- Context: the ROS 2, FreeCAD and rosbags MCP servers use stdio. They are started by the MCP client, not long-running daemons.
+- Decision: `docker-compose.yml` holds runtime services only (`ros2-jazzy`, `shodh-memory`). The five MCP servers are registered in `.mcp.json` and spawned by the client. See [docs/mcp-tools-verified.md](docs/mcp-tools-verified.md).
+- Consequences: works with Claude Code and Cursor as is. Kimi Code does not read `.mcp.json`, so its entries must be copied by hand.
 
-**Decision.**
-1. Blender stays on host (GUI + GPU). MCP registration ships with `mcp-for-blender` (verified invocation); Phase 3 evaluates switching to the official Blender Lab MCP once its setup is confirmed.
-2. Phase 2 URDF export will **not** depend on Phobos working on Blender 5.2: primary path = deterministic `bpy` export script generating URDF/Xacro from a versioned master `.blend`; Phobos is kept as a conceptual reference (and optional path on an older Blender install). ADR to be updated with the delivered export script.
+## ADR-0007: Dedicated Ollama server for `gpt-oss:20b`
 
-**Consequences.** The "`.blend` maître + script d'export reproductible" requirement is preserved; the Phobos dependency is de-risked rather than silently assumed.
+Status: accepted.
 
----
+- Context: on the reference machine (Windows, Ada GPU, Ollama 0.34), loading `gpt-oss:20b` with flash attention, an 8-bit KV cache and the `cuda_v13` backend crashes the runner at initialization (`CUDA error: shared object initialization failed` in `MUL_MAT`). This matches open upstream Ollama issues #17380 and #18522. Other models run fine.
+- Six isolated attempts showed that only `cuda_v12` with flash attention off and an f16 KV cache loads. Reducing the context to 8192 gives full GPU residency.
+- Decision: serve the agentic model from a dedicated Ollama instance on `127.0.0.1:11499` with `OLLAMA_LLM_LIBRARY=cuda_v12`, `OLLAMA_FLASH_ATTENTION=0`, `OLLAMA_KV_CACHE_TYPE=f16` and `OLLAMA_CONTEXT_LENGTH=8192`. It is started by `scripts/start-ollama-gptoss.ps1`. Other Ollama servers and their global settings are untouched.
+- Consequences: DroneCAD components target port 11499. Retire the dedicated server once upstream fixes the crash and the model is re-benchmarked. The 1,463 MiB of free VRAM is about 5% under the strict 1.5 GiB target but stable, because the KV cache is preallocated. `gemma4:12b` remains the strictly compliant fallback.
+- Alternatives rejected: changing the global environment for every model; waiting for the upstream fix; downgrading the model.
 
-## ADR-0005 — Security & isolation baseline
+## ADR-0008: Vendored `mcp-rosbags` with a compatibility wrapper
 
-**Date:** 2026-09-18 · **Status:** accepted
+Status: accepted.
 
-**Decision.** Non-root users in all containers; **no** `privileged: true` (would require its own ADR); published ports bound to `127.0.0.1` only; named internal network `agentnet`; secrets only via env/secret stores, never committed (GitHub secret scanning + push protection enabled); CI actions pinned by SHA; `scripts/validate_stack.py` enforces these rules locally and in CI. Phase 3 adds tool allowlists per loop phase, per-call timeouts, and a structured JSON journal with correlation IDs.
+- Context: the upstream `mcp-rosbags` server is stale and cannot read the bag format written by ROS 2 Jazzy (version 9).
+- Decision: keep it as a pinned git submodule under `vendor/mcp-rosbags` and run it through a small compatibility wrapper that uses a modern `rosbags` release and shims the CDR (de)serialization functions, with `mcp<2`. Forking stays an option if the wrapper stops being enough.
+- Consequences: the server reads real Jazzy bags (11,526 messages verified). Changing the submodule URL is enough to switch to a fork.
 
-**Rationale.** Localhost-only with no TLS is acceptable per brief; principle of least privilege is enforced mechanically, not by convention.
+## Current limits
 
----
-
-## ADR-0006 — MCP transport: stdio servers are client-spawned, not compose daemons
-
-**Date:** 2026-09-18 · **Status:** accepted
-
-**Context.** The brief lists `ros2-mcp`, `freecad-mcp`, `mcp-rosbags` as compose services. Audit shows all three are **stdio** MCP servers (spawned by the MCP client over stdin/stdout), not long-running daemons. Presenting them as compose services would require an unverified stdio↔socket bridge.
-
-**Decision.** `docker-compose.yml` contains *runtime* services only (`ros2-jazzy`, `shodh-memory` REST). The stdio MCP servers are registered in `.mcp.json` and spawned by the agent client:
-- `blender` → `uvx mcp-for-blender` (host),
-- `freecad` → `uvx --from freecad-robust-mcp --with 'mcp<2' freecad-mcp` with `FREECAD_MODE=xmlrpc` against the **local FreeCAD 1.1 host install** (`%LOCALAPPDATA%\Programs\FreeCAD 1.1`, verified 2026-09-18), via the `robust-mcp` workbench bridge v0.6.2 (repo `spkane/freecad-addon-robust-mcp-server`, cloned into `%APPDATA%\FreeCAD\v1-1\Mod\freecad-robust-mcp`; XML-RPC on `127.0.0.1:9875`). **Note:** the PyPI client needs the `mcp<2` pin (its dependency metadata allows `mcp` 2.x, which renamed `FastMCP` — `ModuleNotFoundError` verified 2026-09-18). Containerized fallback: `docker run --rm -i --add-host=host.docker.internal:host-gateway -e FREECAD_MODE=xmlrpc ghcr.io/spkane/freecad-robust-mcp`,
-- `ros2` → `docker exec -i dronecad-ros2-jazzy …` (server lives inside the ROS container),
-- `rosbags` → vendored clone (fork candidate, Phase 3),
-- `memory` → `npx -y @shodh/memory-mcp` (stdio) + optional REST `:3030`.
-
-**Consequences.** Works with how MCP actually works today (Claude Code / Cursor / other stdio clients). Phase 3 validates each server with a real `tools/list` call and records evidence in `REPORT.md`. If a non-stdio mode appears for a server (e.g. HTTP), a compose service can be added without breaking the registry.
-
----
-
-## ADR-0007 — Dedicated Ollama runtime for `gpt-oss:20b` (upstream crash workaround)
-
-**Date:** 2026-09-18 · **Status:** accepted (runtime-verified)
-
-**Context.** On this machine (RTX 4070 Ti SUPER / Windows / Ollama 0.34.0), loading `gpt-oss:20b` on the main Ollama server (`127.0.0.1:11480`; `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0`, ctx 32768) crashes `llama-server` at init: `exit 0xc0000409 / CUDA error: shared object initialization failed` in `MUL_MAT` on the `cuda_v13` build. Other models (`gemma4`, `qwen2.5-coder`) run fine on the same server. This is a known, still-open upstream issue class (ollama #17380, #18522 — Windows/Ada + MXFP4). Locally verified in six isolated attempts (temporary servers, main server untouched): `FA=0` alone conflicts with q8_0 KV; `KV=f16` alone still crashes; `cuda_v13` + `FA=0` + `f16` still crashes; `cuda_v12` alone still crashes; **`cuda_v12` + `FA=0` + `KV=f16` works**; adding ctx 8192 yields **100 % GPU residency**.
-
-**Decision.** Serve DroneCAD's agentic model from a **dedicated Ollama server** on `127.0.0.1:11499` (`OLLAMA_LLM_LIBRARY=cuda_v12`, `OLLAMA_FLASH_ATTENTION=0`, `OLLAMA_KV_CACHE_TYPE=f16`, `OLLAMA_CONTEXT_LENGTH=8192`), launched by `scripts/start-ollama-gptoss.ps1`. The main server (`:11480`) and its global settings stay untouched for all other models and tooling. Benchmarked on this configuration: **115.44 tok/s eval, 222.96 tok/s prefill, 100 % GPU, 1 463 MiB VRAM free** (`docs/phase-0-hardware.md`).
-
-**Consequences.** DroneCAD stack components must target `:11499` for the agentic model (documented in README/REPORT). When an upstream Ollama release fixes the cuda_v13/MXFP4 crash, retire the dedicated server after re-benchmarking. The 8 192 context is the brief's own fallback rule. The 1 463 MiB free margin is ~5 % under the brief's strict 1.5 GiB threshold but stable (KV pre-allocated); the strictly-compliant alternative (`gemma4:12b`, level-4 fallback) is kept documented for the user to arbitrate.
-
-**Alternatives rejected.** Global environment change (`FA=0`/`cuda_v12` for every model — would regress unrelated tooling) · waiting for the upstream fix (blocks Phase 0) · model downgrade (kept as documented fallback, not default).
-
----
-
-## ADR-0008 — `mcp-rosbags`: compatibility wrapper now, formal fork only if upstream stays frozen
-
-**Date:** 2026-09-19 · **Status:** accepted
-
-**Context.** The audited `binabik-ai/mcp-rosbags` (Apache-2.0, last upstream commit 2025-09) cannot run as-is on a ROS 2 Jazzy stack: (1) its pre-0.10 `rosbags` API cannot read Jazzy's rosbag2 metadata v9 (« version 9 not supported » — verified on our own bags), while modern `rosbags` removed the API it imports (`rosbags.serde.deserialize_cdr` / `serialize_cdr`); (2) `mcp` 2.x removed the low-level `Server.list_tools()` it uses (verified: `mcp` 2.2.0 fails, 1.29/1.30 works).
-
-**Decision.** Keep the pristine submodule and run it through **`scripts/rosbags_mcp_server.py`** — a wrapper that (a) restores the legacy function names on top of the modern typestore (`Stores.ROS2_JAZZY`) and (b) runs under a dedicated venv pinned `mcp<2` (`scripts/setup_rosbags_vendor.ps1`). Verified end-to-end: `bag_info` + `get_messages_in_range` read a 17 656-message mcap v9 bag produced by our own loop.
-
-**Consequences / fork criteria.** The wrapper is ~60 lines and behaviour-transparent. A formal fork (publish `leosand/mcp-rosbags`, patched in-tree) becomes the right move if any of: upstream still frozen 6+ months from today; the wrapper needs more than two additional shims; or a feature is needed on our side (configurable typestore, mcap v9 writer). Until then, the wrapper keeps provenance clean (submodule at the upstream commit + a dated, documented compat layer).
-
-**Alternatives rejected.** Pinning `rosbags<0.10` (cannot read v9 bags — fails on our own artifacts) · forking today (maintenance burden without a second consumer yet) · rewriting the server (out of scope for Phase 3).
-
----
-
-## Current limits (2026-09-18)
-
-- Phase 1 runtime images not built yet: compose references the official `ros:jazzy` image; the multi-stage Dockerfile with Gazebo/`ros_gz`/`ros2_control`/MoveIt 2 lands in Phase 1.
-- FreeCAD **1.1.3 is installed** on the host (user-local, `%LOCALAPPDATA%\Programs\FreeCAD 1.1`; the first probe only covered `Program Files` — corrected 2026-09-18). The `freecad` MCP entry targets the **local install** via the `robust-mcp` workbench bridge (restart FreeCAD + start the RPC server to activate; round-trip validated in Phase 3). The Dockerized server remains a documented fallback.
-- Kimi Code does not appear to read `.mcp.json` natively (`kimi --help` shows no MCP flag) — per-client registration is a Phase 3 item; Claude Code/Cursor read `.mcp.json` as-is.
-- CPU-bound RTF is unmeasured; Gazebo performance targets are provisional until Phase 2.
-- `docs/`, `README` and `REPORT` are bilingual: when editing one language, update the other.
+- Real-time factor of 1 is not reached with the camera enabled (0.60 measured).
+- The headless CI world has no rendering plugin.
+- Kimi Code needs manual MCP registration.
+- Results come from simulation only.

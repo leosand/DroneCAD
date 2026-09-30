@@ -1,35 +1,35 @@
-# AGENTS.md — DroneCAD
+# AGENTS.md
 
-> EN: Entry point for AI agents working in this repository. / FR : Point d'entrée pour les agents IA travaillant dans ce dépôt.
+Entry point for AI coding agents working in this repository.
 
-## Contexte
+## Context
 
-DroneCAD est la **stack de prototypage humanoïde agentique** (Blender + FreeCAD + ROS 2 Jazzy + Gazebo Harmonic + MCP),
-pilotée par un modèle local (`gpt-oss:20b`) sur une RTX 4070 Ti SUPER 16 Go, hôte Windows + Docker Desktop (WSL2).
+DroneCAD is a local-first agentic prototyping stack for humanoid robotics: Blender, FreeCAD, ROS 2 Jazzy, Gazebo Harmonic and MCP, driven by a local model (`gpt-oss:20b`). The reference host is Windows with Docker Desktop (WSL2) and a 16 GB NVIDIA GPU.
 
-- Brief fondateur (contrat) : `PROMPT_KIMI_CODE.md` — à lire avant toute contribution.
-- État réel des phases et écarts documentés : `REPORT.md` (**source de vérité de l'avancement**).
-- Décisions d'architecture : `ARCHITECTURE.md` (ADR 0001–0006).
+- Design decisions: [ARCHITECTURE.md](ARCHITECTURE.md).
+- Verification status and known deviations: [docs/verification-report.md](docs/verification-report.md).
+- Usage: [docs/USAGE.md](docs/USAGE.md). Tests: [docs/TESTING.md](docs/TESTING.md).
 
-## Règles de travail
+## Working rules
 
-1. **Bilingue** — commentaires de code et fichiers de configuration critiques : `// EN: ... / FR : ...`.
-2. **Python 3.12**, type hints stricts pour la couche agentique ; **TypeScript strict** si une UI d'orchestration est ajoutée.
-3. **Sécurité d'abord** — conteneurs non-root, aucun port publié hors `127.0.0.1`, aucun secret codé en dur, jamais de `privileged: true` sans ADR.
-4. **Pas de TODO silencieux** — tout élément reporté ou écarté est tracé dans `REPORT.md` (section « En attente / blocages »).
-5. **Versioning harness** — SemVer + `CHANGELOG.md` (`[Unreleased]` alimentée) ; releases **full-auto** gérées par `.harness/scripts/release-check.py` du harness parent (`E:/Mes apps`). Ne pas tagger manuellement.
-6. **Modèle local** — `gpt-oss:20b` (voir ADR-0002) ; ne pas présumer d'un autre modèle sans mise à jour de l'ADR.
-7. **Sources de vérité** — code > tests > `REPORT.md` > `PROMPT_KIMI_CODE.md`.
+1. Write code comments and documentation in English.
+2. Python 3.12 with strict type hints for the agent layer.
+3. Security first: non-root containers, ports bound to `127.0.0.1`, no hard-coded secrets, no `privileged: true` without an ADR.
+4. No silent TODOs. Record deferred work in `docs/verification-report.md`.
+5. Use SemVer and keep `CHANGELOG.md` up to date under `[Unreleased]`.
+6. Do not assume another local model without updating ADR-0002.
+7. Source of truth order: code, then tests, then the verification report.
+8. Run Gazebo containers as `--user 1000:1000`.
 
-## Commandes clés
+## Key commands
 
 ```bash
-docker compose config -q            # validation du compose / compose validation
-python scripts/validate_stack.py    # ports publics, privileged, secrets, .mcp.json
-docker compose up -d ros2-jazzy     # Phase 1 : conteneur ROS 2 / Gazebo
+docker compose config -q            # validate the compose file
+python scripts/validate_stack.py    # ports, privileged, secrets, MCP registry
+docker compose up -d                # start the stack
+ruff check agent scripts ws/src     # lint
 ```
 
-## Périmètre agentique (rappel du brief)
+## Agent scope
 
-- Les serveurs MCP **stdio** (blender, freecad, ros2, rosbags, memory) sont lancés par le client agent — voir ADR-0006 et `.mcp.json`.
-- Allowlist d'outils par phase, timeout par appel, journal JSON à correlation ID : obligatoires dans `agent_loop.py` (Phase 3).
+The MCP servers (`blender`, `freecad`, `ros2`, `rosbags`, `memory`) are spawned by the client, see ADR-0006 and `.mcp.json`. The agent loop must keep a per-phase tool allowlist, a per-call timeout and a JSON journal with correlation IDs.
