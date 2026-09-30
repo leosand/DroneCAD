@@ -3,10 +3,11 @@ message: "If you use this software, please cite it as below."
 title: "DroneCAD"
 abstract: "Local-first agentic prototyping stack for humanoid robotics: Blender, FreeCAD, ROS 2 Jazzy, Gazebo Harmonic and MCP, driven by a local LLM."
 authors:
-  - family-names: "Sandjong"
-    given-names: "Leonel"
+  - name: "DroneCAD contributors"
 repository-code: "https://github.com/leosand/DroneCAD"
 license: MIT
+version: "0.3.0"
+date-released: "2026-09-19"
 keywords:
   - robotics
   - ros2

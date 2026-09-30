@@ -18,4 +18,4 @@ We want participation in this project to be a harassment-free experience for eve
 
 ## Enforcement
 
-Maintainers may remove, edit or reject contributions that violate this code and may ban contributors temporarily or permanently. Report violations through GitHub's private reporting (Security tab > Report a vulnerability) or by contacting the maintainer via the profile at https://github.com/leosand.
+Maintainers may remove, edit or reject contributions that violate this code and may ban contributors temporarily or permanently. Report violations privately through GitHub (Security tab > Report a vulnerability) so that reports are never public.
