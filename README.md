@@ -1,188 +1,96 @@
-# DroneCAD — Humanoid agentic prototyping stack
+# DroneCAD
 
-[![ci](https://github.com/leosand/DroneCAD/actions/workflows/ci.yml/badge.svg)](https://github.com/leosand/DroneCAD/actions/workflows/ci.yml)
+[![CI](https://github.com/leosand/DroneCAD/actions/workflows/ci.yml/badge.svg)](https://github.com/leosand/DroneCAD/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> **EN** — Agentic humanoid-robot prototyping stack: Blender + FreeCAD + ROS 2 Jazzy + Gazebo Harmonic + MCP servers, driven by a local agentic coding model on a single RTX 4070 Ti SUPER (16 GB VRAM, Windows host + Docker Desktop/WSL2).
-> **FR-CA** — Stack de prototypage humanoïde agentique : Blender + FreeCAD + ROS 2 Jazzy + Gazebo Harmonic + serveurs MCP, pilotée par un modèle de codage agentique local sur une seule RTX 4070 Ti SUPER (16 Go VRAM, hôte Windows + Docker Desktop/WSL2).
+Local-first agentic prototyping stack for humanoid robotics. A local LLM (`gpt-oss:20b` served by Ollama) drives **FreeCAD**, **Blender**, **ROS 2 Jazzy** and **Gazebo Harmonic** through **MCP** (Model Context Protocol) servers. Nothing has to leave your machine.
 
-- Founding brief (contract, verbatim): [`PROMPT_KIMI_CODE.md`](PROMPT_KIMI_CODE.md)
-- Live status, evidence and blockers: [`REPORT.md`](REPORT.md) — **the single source of truth for progress**
-- Engineering decisions: [`ARCHITECTURE.md`](ARCHITECTURE.md) (ADR 0001–0006)
+> **Status: v0.3.0.** Research prototype, validated in simulation only. Review every LLM output before fabricating anything or running it on real hardware.
 
----
+## What it does
 
-## English
+An agent can run this loop end to end (automated test `E2E_OK`):
 
-### Status (2026-09-18)
+1. Design a part in FreeCAD and export STEP and STL.
+2. Import it into Blender and export BLEND and GLB.
+3. Simulate a 28-DoF humanoid in headless Gazebo and record a ROS 2 bag.
+4. Analyze the bag (falls, joint effort) and iterate if needed.
 
-| Phase | Scope | Status |
-|---|---|---|
-| 0. Hardware & local model | Probes, dependency audit, model selection, benchmark | ✅ Done — `gpt-oss:20b`, see [`docs/phase-0-hardware.md`](docs/phase-0-hardware.md) |
-| 1. Isolation & orchestration | Docker Compose, ROS 2 Jazzy + Gazebo Harmonic, MCP servers | ✅ Multi-stage image (`dronecad/ros2-jazzy:0.1.0`: Gazebo Harmonic 8.15.0, MoveIt 2, `gz_ros2_control`; vendored `ros2_mcp`), non-root containers (uid 1000), 3 s stack startup; FreeCAD `robust-mcp` bridge installed host-side |
-| 2. Humanoid design chain | `humanoid_description` / `humanoid_gazebo` / `humanoid_control` ROS 2 packages | ✅ 28-DoF humanoid: **stands ≥ 10 simulated seconds** (z = 1.065 m, roll/pitch ≈ 0), squat tracking 0.031 rad, 11/11 URDF tests (incl. `check_urdf`), colcon green |
-| 3. Agentic MCP loop | `agent_loop.py` (design → model → simulate → analyze → iterate) | ✅ Guards + stdio client + 7 tests; **5/5 MCP servers verified** — `tools/list`: blender 31, freecad 83, ros2 20, rosbags 15, memory 38, with **live tool calls**; **end-to-end loop `E2E_OK` (1/3 iterations)** — FreeCAD parametric bracket → STEP/STL → Blender `.blend` + GLB → Gazebo run + rosbag2 (17 656 msgs) → rosbags diagnosis (max joint effort 0.055 Nm) |
-| 4. CI/CD & quality | colcon build, Gazebo headless tests, Trivy scans, multi-stage image | ✅ **CI green** (run `35418441478`) — `validate`, `lint` (ruff), `container-tests` (buildx + GHA cache → colcon + URDF tests → **Gazebo server smoke** → **standing test inside the shipped image** → **Trivy HIGH/CRITICAL fixable**), `secret-scan` (gitleaks); actions pinned by SHA. Five red runs first: four real defects diagnosed and fixed (`EXE001` Windows chmod; 2 s spawn race → `spawn_ready.py`; OGRE2 world → `flat_ground_headless.sdf`; **runner uid 1001 without a `/etc/passwd` entry → gz-transport silent**) plus one CRITICAL CVE bump (`anyio`) — full log in [`REPORT.md`](REPORT.md) |
-| 5. Verification | 8-item end-to-end checklist | ✅ 8/8 — item-by-item in [`REPORT.md`](REPORT.md) |
-
-### Architecture
+Last measured run: 11,526 messages recorded, the robot stood for 10 simulated seconds (base height about 1.06 m), and the peak joint effort stayed within limits.
 
 ```mermaid
 flowchart LR
-  subgraph HOST["Windows host — RTX 4070 Ti SUPER 16 GB"]
-    AGENT["agent_loop.py<br/>(Phase 3)"]
-    OLLAMA["Ollama<br/>gpt-oss:20b"]
-    BL["Blender 5.2<br/>+ MCP add-on"]
-    MEM["shodh-memory"]
-  end
-  subgraph DOCKER["Docker Desktop / WSL2 — network agentnet"]
-    ROS["ros2-jazzy<br/>ROS 2 Jazzy + Gazebo Harmonic"]
-    BAGS[("ROS bags<br/>db3 / mcap")]
-  end
-  OLLAMA --> AGENT
-  AGENT -->|stdio| MB["blender MCP"]
-  AGENT -->|stdio| MF["freecad MCP<br/>docker run -i"]
-  AGENT -->|stdio · docker exec| MR["ros2 MCP"]
-  AGENT -->|stdio| MG["rosbags MCP"]
-  AGENT -->|stdio| MEM
-  BL --- MB
-  MR --- ROS
-  ROS --> BAGS
-  MG --> BAGS
+  LLM["Local LLM (Ollama)"] --> Agent["Agent loop"]
+  Agent -->|MCP| FC["FreeCAD"]
+  Agent -->|MCP| BL["Blender"]
+  Agent -->|MCP| R2["ROS 2 + Gazebo (container)"]
+  Agent -->|MCP| RB["rosbags"]
+  Agent -->|MCP| MEM["Local memory"]
 ```
 
-### Hardware & local model (Phase 0, measured)
+## Quick start
 
-| Item | Measured |
-|---|---|
-| GPU | NVIDIA RTX 4070 Ti SUPER — 16 376 MiB VRAM, driver 610.88 |
-| System | Intel Xeon W-2123 (4c/8t) · 31.7 GB RAM · Windows · Docker 29.7.2 (WSL2) |
-| Model | **`gpt-oss:20b`** — 14 GB (MXFP4), 128K ctx, tools — **115.4 tok/s, 100 % GPU at ctx 8192**, served by a dedicated Ollama instance (`:11499`, ADR-0007) — see [`docs/phase-0-hardware.md`](docs/phase-0-hardware.md) |
-| Rejected | `devstral:22b` (does not exist) · `devstral-small-2:24b` (15 GB, no KV margin) · `qwen3-coder-next` (52 GB, not ~16 GB) — ADR-0002 |
-
-### Quick start
+Prerequisites: Docker with Compose, [Ollama](https://ollama.com) with `gpt-oss:20b` (about 14 GB, 16 GB of VRAM or unified memory recommended), FreeCAD 1.1.x and Blender with the DroneCAD add-on if you want the CAD servers. About 6.3 GB of disk for the container image.
 
 ```bash
-git clone https://github.com/leosand/DroneCAD.git && cd DroneCAD
-cp .env.example .env                # memory key template / gabarit de clé mémoire
-python -c "import secrets; print(secrets.token_hex(24))"   # generate YOUR key / générer VOTRE clé
-docker compose config -q            # validate compose
-python scripts/validate_stack.py    # loopback-only ports, no privileged, no secrets, MCP registry
-docker compose up -d                # ROS 2 + Gazebo + MoveIt 2 container, local cognitive memory
+git clone --recurse-submodules https://github.com/leosand/DroneCAD.git
+cd DroneCAD
+cp .env.example .env                      # then edit it, see comments inside
+python -c "import secrets; print(secrets.token_hex(24))"   # put the result in SHODH_API_KEYS
+docker compose config -q                  # validate the compose file
+python scripts/validate_stack.py          # security checks: loopback ports, no privileged, no secrets
+docker compose up -d                      # ROS 2 + Gazebo + MoveIt 2 container and local memory
 ```
 
-Daily usage (MCP clients, driving the simulation, the agentic loop, the memory) is in
-[`docs/USAGE.md`](docs/USAGE.md); the full validation procedure is in [`docs/TESTING.md`](docs/TESTING.md).
+Next: [docs/USAGE.md](docs/USAGE.md) to connect an MCP client, run the simulation and the agent loop.
 
-**MCP registration note** — `.mcp.json` is the canonical registry for stdio MCP clients (Claude Code / Cursor read it as-is); the `rosbags` entry uses `${DRONECAD_HOME}` (set it to this repository's absolute path). Kimi Code does not read `.mcp.json` natively today — per-client registration is a Phase 3 item (see `REPORT.md`).
+## MCP servers
 
-**Want to validate everything yourself?** [`docs/TESTING.md`](docs/TESTING.md) is a six-level procedure
-(30 s stack check → 10 min full agentic loop) with the exact commands and the **measured** expected
-outputs, plus a failure→cause table (including the `--user 1000:1000` requirement for Gazebo).
-
-### Repository layout
-
-```
-DroneCAD/
-├── PROMPT_KIMI_CODE.md      # founding brief (verbatim)
-├── README.md                # this file (EN / FR-CA)
-├── ARCHITECTURE.md          # ADR 0001–0006
-├── REPORT.md                # live status + verification checklist
-├── CHANGELOG.md             # Keep a Changelog · releases full-auto via parent harness
-├── AGENTS.md                # instructions for AI agents working here
-├── .mcp.json                # MCP server registry (localhost only)
-├── .env.example             # local env template — copy to .env (memory key, git-ignored)
-├── docker-compose.yml       # runtime services (security baseline)
-├── .github/workflows/ci.yml # scaffold validation (SHA-pinned actions)
-├── docs/phase-0-hardware.md # probe logs + model decision matrix
-├── docs/USAGE.md            # day-to-day usage: MCP clients, simulation, loop, memory
-├── docs/TESTING.md          # how to validate the stack yourself (6 levels, measured outputs)
-├── docs/mcp-tools-verified.md # 5/5 MCP servers, tools/list + live calls
-├── scripts/validate_stack.py
-└── ws/                      # colcon workspace (Phase 2 packages)
-```
-
-### Reference repositories audited (2026-09-18)
-
-| Repository (owner/repo) | Verdict | License | Last activity | Notes |
-|---|---|---|---|---|
-| `wise-vision/ros2_mcp` | **adopt** | MPL-2.0 | 2026-08-19 | ROS 2 MCP over stdio; CI tests; rich toolset |
-| `kakimochi/ros2-mcp-server` | inspiration | none detected | 2025-06 | Stale, `/cmd_vel` only, Humble — not used |
-| `spkane/freecad-addon-robust-mcp-server` + `ghcr.io/spkane/freecad-robust-mcp` | **adopt** | MIT | 2026-09-15 | Image runs as stdio MCP (`docker run -i`); ⚠️ the repo `spkane/freecad-robust-mcp` itself does not exist |
-| `neka-nat/freecad-mcp` | adopt (upstream) | MIT | 2026-09-17 | `uvx freecad-mcp`; design upstream of spkane |
-| `binabik-ai/mcp-rosbags` | fork if needed | Apache-2.0 | 2025-09-21 | 1 year stale, no CI; fork to keep it maintained |
-| `ahujasid/mcp-for-blender` (ex `blender-mcp`) | adopt (provisional) | MIT | 2026-09-16 | `uvx mcp-for-blender`; Blender 5.x compatibility unverified |
-| Blender Lab official MCP (`projects.blender.org/lab/blender_mcp`) | adopt/compare | GPL-3.0-or-later | v1.0.3 — 2026-09-11 | Requires Blender ≥ 5.1 (host: 5.2 ✅); client-side CLI to confirm (Phase 3) |
-| `dfki-ric/phobos` | ⚠️ avoid for Blender ≥ 4.2 | BSD-3-Clause | tag 2.0.2 (2025-05) | Tested on Blender 3.3 LTS; 4.2 breakage in open issues → Phase 2 export plan revised (ADR-0004) |
-| `varun29ankuS/shodh-memory` | **adopt** | Apache-2.0 | 2026-09-14 | `npx -y @shodh/memory-mcp`; REST :3030; ships a ROS 2 transport |
-| `gazebosim/ros_gz` | adopt | Apache-2.0 | 2026-09-15 | Canonical ROS↔Gazebo bridge (⚠️ `ros2/ros_gz` does not exist) |
-| `gazebosim/gz-sim` (Harmonic = `gz-sim8` LTS) | adopt | Apache-2.0 | LTS, EOL 2029 | Simulation core |
-| `ros-controls/ros2_control` 6.10.1 · `moveit/moveit2` 2.15.2 | adopt | Apache-2.0 / BSD-3 | 2026-09-16/18 | Control + planning stacks |
-
-### Security posture
-
-- Containers: non-root users, **no** `privileged: true`, no host networking; published ports bound to `127.0.0.1` only.
-- Repo: GitHub secret scanning + push protection enabled at creation; CI-pinned actions by SHA; `scripts/validate_stack.py` gates ports/secrets/privileged in CI.
-- No secrets in repo — `.env*`, keys and credentials are git-ignored and refused by convention. The cognitive-memory key is **yours**: it lives in `.env`, is injected into the container by the compose file and expanded client-side as `${SHODH_API_KEYS}` — never committed (`.env.example` shows how to generate it).
-
----
-
-## Français (FR-CA)
-
-### État (2026-09-18)
-
-| Phase | Portée | État |
+| Server | Purpose | Tools |
 |---|---|---|
-| 0. Matériel & modèle local | Sondes, audit des dépendances, choix du modèle, banc d'essai | ✅ Terminé — `gpt-oss:20b`, voir [`docs/phase-0-hardware.md`](docs/phase-0-hardware.md) |
-| 1. Isolation & orchestration | Docker Compose, ROS 2 Jazzy + Gazebo Harmonic, serveurs MCP | ✅ Image multi-étapes (`dronecad/ros2-jazzy:0.1.0` : Gazebo Harmonic 8.15.0, MoveIt 2, `gz_ros2_control` ; `ros2_mcp` vendoré), conteneurs non-root (uid 1000), démarrage de pile 3 s ; pont FreeCAD `robust-mcp` installé côté hôte |
-| 2. Chaîne de conception humanoïde | Paquets ROS 2 `humanoid_description` / `humanoid_gazebo` / `humanoid_control` | ✅ Humanoïde 28 DoF : **debout ≥ 10 s simulées** (z = 1,065 m, roll/pitch ≈ 0), squat suivi 0,031 rad, 11/11 tests URDF (dont `check_urdf`), colcon vert |
-| 3. Boucle agentique MCP | `agent_loop.py` (concevoir → modéliser → simuler → analyser → itérer) | ✅ Garde-fous + client stdio + 7 tests ; **5/5 serveurs MCP vérifiés** — `tools/list` : blender 31, freecad 83, ros2 20, rosbags 15, memory 38, avec **appels d'outils réels** ; **boucle bout-en-bout `E2E_OK` (1/3 itérations)** — équerre FreeCAD paramétrique → STEP/STL → Blender `.blend` + GLB → Gazebo + rosbag2 (17 656 messages) → diagnostic rosbags (effort articulaire max 0,055 Nm) |
-| 4. CI/CD & qualité | build colcon, tests Gazebo sans interface, scan Trivy, image multi-étapes | ✅ **CI verte** (run `35418441478`) — `validate`, `lint` (ruff), `container-tests` (buildx + cache GHA → colcon + tests URDF → **fumée du serveur Gazebo** → **test debout dans l'image livrée** → **Trivy HIGH/CRITICAL corrigeables**), `secret-scan` (gitleaks) ; actions épinglées par SHA. Cinq runs rouges d'abord : quatre défauts réels diagnostiqués et corrigés (`EXE001` chmod Windows ; course du spawn à 2 s → `spawn_ready.py` ; monde OGRE2 → `flat_ground_headless.sdf` ; **uid 1001 du runner sans entrée `/etc/passwd` → gz-transport muet**) et un bump de CVE CRITICAL (`anyio`) — journal complet dans [`REPORT.md`](REPORT.md) |
-| 5. Vérification | Liste de contrôle de bout en bout (8 points) | ✅ 8/8 — détail point par point dans [`REPORT.md`](REPORT.md) |
+| `freecad` | Parametric CAD | 83 |
+| `blender` | Meshes and scenes | 31 |
+| `ros2` | ROS 2 topics, services, actions | 20 |
+| `rosbags` | Read and analyze bags | 15 |
+| `memory` | Persistent local memory | 38 |
 
-### Matériel & modèle local (Phase 0, mesuré)
+All five are declared in `.mcp.json` and were checked with real `tools/list` and tool calls. Details: [docs/mcp-tools-verified.md](docs/mcp-tools-verified.md).
 
-| Élément | Valeur mesurée |
+## Repository layout
+
+| Path | Role |
 |---|---|
-| GPU | NVIDIA RTX 4070 Ti SUPER — 16 376 Mio de VRAM, pilote 610.88 |
-| Système | Intel Xeon W-2123 (4 cœurs/8 fils) · 31,7 Go de RAM · Windows · Docker 29.7.2 (WSL2) |
-| Modèle | **`gpt-oss:20b`** — 14 Go (MXFP4), contexte 128 K, outils — **115,4 tok/s, 100 % GPU à ctx 8192**, servi par une instance Ollama dédiée (`:11499`, ADR-0007) — détails dans [`docs/phase-0-hardware.md`](docs/phase-0-hardware.md) |
-| Rejetés | `devstral:22b` (n'existe pas) · `devstral-small-2:24b` (15 Go, marge KV insuffisante) · `qwen3-coder-next` (52 Go, pas ~16 Go) — ADR-0002 |
+| `agent/` | Agent loop with guardrails, stdio MCP client, `mcp_call.py` helper |
+| `ws/` | ROS 2 workspace: humanoid description, Gazebo and control packages |
+| `docker/` | Multi-stage ROS 2 Jazzy image |
+| `scripts/` | Validation and helper scripts |
+| `vendor/` | Pinned third-party MCP server (git submodule) |
+| `docs/` | Usage, testing, verified tools, architecture notes |
+| `.mcp.json` | MCP server registry (localhost only) |
+| `AGENTS.md` | Instructions for AI coding agents |
 
-### Démarrage rapide
+## Safety and security
 
-```bash
-git clone https://github.com/leosand/DroneCAD.git && cd DroneCAD
-cp .env.example .env                # gabarit de clé mémoire / memory key template
-python -c "import secrets; print(secrets.token_hex(24))"   # générer VOTRE clé / generate YOUR key
-docker compose config -q            # valider le compose
-python scripts/validate_stack.py    # ports en boucle locale, pas de privileged, pas de secrets, registre MCP
-docker compose up -d                # conteneur ROS 2 + Gazebo + MoveIt 2, mémoire cognitive locale
-```
+- Containers run as non-root, never privileged, without host networking. Published ports bind to `127.0.0.1` only.
+- No secret is committed. `.env` is git-ignored; the memory key is one you generate for your own local server.
+- The agent loop uses a per-phase tool allowlist, a per-call timeout and a JSONL journal with correlation IDs.
+- CI pins GitHub Actions by SHA and scans the image with Trivy (HIGH and CRITICAL).
 
-L'usage quotidien (clients MCP, pilotage de la simulation, boucle agentique, mémoire) est dans
-[`docs/USAGE.md`](docs/USAGE.md) ; la procédure de validation complète est dans [`docs/TESTING.md`](docs/TESTING.md).
+Report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
 
-**Note d'enregistrement MCP** — `.mcp.json` est le registre canonique des clients MCP en stdio (Claude Code / Cursor le lisent tel quel) ; l'entrée `rosbags` utilise `${DRONECAD_HOME}` (définir cette variable avec le chemin absolu du dépôt). Kimi Code ne lit pas `.mcp.json` nativement aujourd'hui — l'enregistrement par client est prévu en Phase 3 (voir `REPORT.md`).
+## Documentation
 
-**Vous voulez tout valider vous-même ?** [`docs/TESTING.md`](docs/TESTING.md) est une procédure à six
-niveaux (vérification de la pile en 30 s → boucle agentique complète en 10 min) avec les commandes
-exactes et les résultats attendus **mesurés**, plus un tableau symptôme → cause (dont l'exigence
-`--user 1000:1000` pour Gazebo).
+- [Usage guide](docs/USAGE.md)
+- [Architecture overview](docs/OVERVIEW.md)
+- [Testing guide](docs/TESTING.md)
+- [Verified MCP tools](docs/mcp-tools-verified.md)
+- [Full documentation index](docs/README.md)
+- [Changelog](CHANGELOG.md)
 
-### Arborescence
+## Contributing
 
-Voir la section anglaise ci-dessus — mêmes chemins, commentaires en français dans chaque fichier.
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-### Dépôts de référence audités
+## License
 
-Voir le tableau de la section anglaise (audit du 2026-09-18, verdicts adopt/fork/inspiration/avoid).
-
-### Posture de sécurité
-
-- Conteneurs : utilisateurs non-root, **aucun** `privileged: true`, pas de mise en réseau de l'hôte ; les ports publiés sont liés à `127.0.0.1` uniquement.
-- Dépôt : analyse de secrets GitHub + protection contre l'envoi activées à la création ; actions CI épinglées par empreinte SHA ; `scripts/validate_stack.py` verrouille ports/secrets/privileged en CI.
-- Aucun secret dans le dépôt — les `.env*`, clés et identifiants sont exclus par `.gitignore` et par convention. La clé de mémoire cognitive est **la vôtre** : elle vit dans `.env`, est injectée dans le conteneur par le compose et expansée côté client sous `${SHODH_API_KEYS}` — jamais versionnée (`.env.example` montre comment la générer).
-
-### Remarque importante (écarts au brief fondateur)
-
-Le brief suppose un hôte Linux (`free -h`) ; la machine cible réelle est **Windows** : les sondes équivalentes sont exécutées via PowerShell, ROS 2/Gazebo vivent dans des conteneurs Linux (WSL2), Blender et FreeCAD restent sur l'hôte (GUI + GPU). Chaque écart est tracé dans [`REPORT.md`](REPORT.md) et justifié par un ADR.
+[MIT](LICENSE). Third-party components under `vendor/` keep their own licenses.
